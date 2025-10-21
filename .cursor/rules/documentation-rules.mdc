@@ -1,0 +1,89 @@
+---
+alwaysApply: true
+---
+
+# Comprehensive Function Documentation
+
+These rules ensure that all code generated or modified by the AI adheres to a high standard of documentation, making the codebase clear,
+maintainable, and easy for both developers and AI to navigate. The primary focus is on consistent and thorough function documentation.
+
+## General Guidelines
+
+IMPORTANT: SAVE ALL DOCUMENTS IN \docs folder
+
+1. **Mandatory Documentation**: Every function, method, or class method (regardless of language) must be documented using the appropriate
+documentation standard for the language:
+   - **JavaScript/TypeScript**: Use JSDoc.
+   - **Python**: Use reStructuredText (reST) docstrings.
+   - **PHP**: Use PHPDoc.
+   - **Java**: Use Javadoc.
+   - **Other languages**: Use the most widely accepted documentation standard (e.g., RDoc for Ruby).
+
+2. **Consistency**: Follow the same documentation style and structure across the entire project to ensure uniformity.
+
+3. **Context Awareness**: Before generating new functions, check the existing codebase for similar functionality to avoid duplication. If a
+similar function already exists, suggest reusing it instead of creating a new one.
+
+4. **Clarity**: Documentation must be concise yet descriptive, avoiding vague terms like "processes data" or "handles stuff." Specify *what*
+the function does, *how* it does it (if complex), and *why* it exists (if not obvious).
+
+## Documentation Requirements for Functions
+
+1. **Description**:
+   - Provide a clear, one- to two-sentence explanation of what the function does.
+   - Include the purpose or context if it's not immediately obvious (e.g., "Used in the checkout flow to calculate discounts").
+
+2. **Parameters**:
+   - List all parameters, including their type (if applicable in the language).
+   - Describe what each parameter represents and any constraints (e.g., "Must be a positive integer").
+   - For optional parameters, indicate default values or behavior when omitted.
+
+3. **Return Value**:
+   - Specify the return type (if applicable) and what the return value represents.
+   - If the function returns `None` or `null`, explicitly state this.
+
+4. **Examples** (for complex functions):
+   - Include at least one usage example for functions with non-trivial logic (e.g., involving multiple parameters or edge cases).
+   - Use code snippets to show typical input and output.# Comprehensive Function Documentation
+
+These rules ensure that all code generated or modified by the AI adheres to a high standard of documentation, making the codebase clear,
+maintainable, and easy for both developers and AI to navigate. The primary focus is on consistent and thorough function documentation.
+
+## General Guidelines
+
+IMPORTANT: SAVE ALL DOCUMENTS IN \docs folder
+
+1. **Mandatory Documentation**: Every function, method, or class method (regardless of language) must be documented using the appropriate
+documentation standard for the language:
+   - **JavaScript/TypeScript**: Use JSDoc.
+   - **Python**: Use reStructuredText (reST) docstrings.
+   - **PHP**: Use PHPDoc.
+   - **Java**: Use Javadoc.
+   - **Other languages**: Use the most widely accepted documentation standard (e.g., RDoc for Ruby).
+
+2. **Consistency**: Follow the same documentation style and structure across the entire project to ensure uniformity.
+
+3. **Context Awareness**: Before generating new functions, check the existing codebase for similar functionality to avoid duplication. If a
+similar function already exists, suggest reusing it instead of creating a new one.
+
+4. **Clarity**: Documentation must be concise yet descriptive, avoiding vague terms like "processes data" or "handles stuff." Specify *what*
+the function does, *how* it does it (if complex), and *why* it exists (if not obvious).
+
+## Documentation Requirements for Functions
+
+1. **Description**:
+   - Provide a clear, one- to two-sentence explanation of what the function does.
+   - Include the purpose or context if it's not immediately obvious (e.g., "Used in the checkout flow to calculate discounts").
+
+2. **Parameters**:
+   - List all parameters, including their type (if applicable in the language).
+   - Describe what each parameter represents and any constraints (e.g., "Must be a positive integer").
+   - For optional parameters, indicate default values or behavior when omitted.
+
+3. **Return Value**:
+   - Specify the return type (if applicable) and what the return value represents.
+   - If the function returns `None` or `null`, explicitly state this.
+
+4. **Examples** (for complex functions):
+   - Include at least one usage example for functions with non-trivial logic (e.g., involving multiple parameters or edge cases).
+   - Use code snippets to show typical input and output.

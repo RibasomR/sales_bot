@@ -1,0 +1,202 @@
+---
+alwaysApply: true
+---
+
+# Python Best Practices and Coding Standards
+
+This document outlines comprehensive best practices and coding standards for Python development, aiming to promote clean, efficient,
+maintainable, and secure code.
+
+Качество кода
+❌ Запрещены дублирования - всегда рефакторьте код
+✅ Обязательна проверка производительности и безопасности
+✅ Обязательна проверка читаемости и поддерживаемости
+✅ Исправляйте все ошибки и предупреждения линтера
+❌ Не используйте тестовые данные в продакшене
+✅ Используйте env.example для конфигурации (не трогайте .env)
+❌ Не пишите тесты - они не требуются
+✅ Всегда мапьте _id в id
+✅ Снижайте когнитивную сложность для легкого чтения
+❌ Не оставляйте TODO в коде
+
+Правила архитектуры
+SOLID принципы
+Single Responsibility (SRP): Класс должен иметь только одну причину для изменения
+Open-Closed (OCP): Код открыт для расширения, закрыт для модификации
+Liskov Substitution (LSP): Подтипы должны быть полностью заменяемы для базовых типов
+Interface Segregation (ISP): Много маленьких интерфейсов лучше одного большого
+Dependency Inversion (DIP): Зависимость от абстракций, а не от конкретных классов
+Классы
+✅ Следуйте SOLID принципам
+✅ Предпочитайте композицию над наследованием
+✅ Объявляйте интерфейсы для определения контрактов
+
+## 1. Code Organization and Structure
+
+### 1.1. Directory Structure Best Practices
+
+* **Flat is better than nested (but not always).** Start with a simple structure and refactor as needed.
+* **Packages vs. Modules:** Use packages (directories with `__init__.py`) for logical grouping of modules.
+* **src layout:** Consider using a `src` directory to separate application code from project-level files (setup.py, requirements.txt,
+etc.). This helps avoid import conflicts and clarifies the project's boundaries.
+* **Typical Project Structure:**
+
+## 2. Error Handling
+- Use specific exception types, avoid bare `except:` clauses
+- Handle exceptions at appropriate levels
+- Use context managers (`with` statement) for resource management
+- Log errors with proper context and stack traces
+
+## 3. Code Organization
+- Keep functions small and focused (single responsibility principle)
+- Avoid deep nesting (max 3-4 levels)
+- Use early returns to reduce nesting
+- Group related functionality into modules and packages
+- Separate business logic from framework-specific code
+
+## 4. Async Programming (aiogram)
+- Use `async`/`await` consistently
+- Don't block the event loop with synchronous operations
+- Use `asyncio.gather()` for concurrent operations
+- Handle exceptions in async functions properly
+- Use `asyncio.create_task()` for fire-and-forget operations
+
+## 5. Database & State Management
+- Use connection pooling for database connections
+- Always close connections and clean up resources
+- Use transactions for data consistency
+- Validate and sanitize all user inputs
+- Use parameterized queries to prevent SQL injection
+
+## 6. Security
+- Never hardcode credentials or API keys (use environment variables)
+- Validate and sanitize all user inputs
+- Use secrets module for generating secure tokens
+- Keep dependencies updated
+- Log security-relevant events
+- Use only real libraries, no need to invent libraries that don't exist, and never use libraries with viruses or vulnerabilities
+
+## 7. Performance
+- Use list comprehensions instead of loops where appropriate
+- Avoid premature optimization
+- Profile code before optimizing
+- Use generators for large datasets
+- Cache expensive computations when appropriate
+
+## 8. Logging
+- Use Python's logging module, not print statements
+- Set appropriate log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- Include context in log messages
+- Don't log sensitive information (passwords, tokens, personal data)
+
+## 9. Dependencies
+- Pin dependency versions in requirements.txt
+- Keep dependencies minimal
+- Regularly update dependencies for security patches
+- Use virtual environments for isolation
+- Use only real dependencies, no need to invent dependency that doesn't exist
+
+## 10. Git & Version Control
+- Write clear, descriptive commit messages
+- Keep commits atomic and focused
+- Don't commit sensitive data or credentials
+- Use .gitignore appropriately
+# Python Best Practices and Coding Standards
+
+This document outlines comprehensive best practices and coding standards for Python development, aiming to promote clean, efficient,
+maintainable, and secure code.
+
+Качество кода
+❌ Запрещены дублирования - всегда рефакторьте код
+✅ Обязательна проверка производительности и безопасности
+✅ Обязательна проверка читаемости и поддерживаемости
+✅ Исправляйте все ошибки и предупреждения линтера
+❌ Не используйте тестовые данные в продакшене
+✅ Используйте env.example для конфигурации (не трогайте .env)
+❌ Не пишите тесты - они не требуются
+✅ Всегда мапьте _id в id
+✅ Снижайте когнитивную сложность для легкого чтения
+❌ Не оставляйте TODO в коде
+
+Правила архитектуры
+SOLID принципы
+Single Responsibility (SRP): Класс должен иметь только одну причину для изменения
+Open-Closed (OCP): Код открыт для расширения, закрыт для модификации
+Liskov Substitution (LSP): Подтипы должны быть полностью заменяемы для базовых типов
+Interface Segregation (ISP): Много маленьких интерфейсов лучше одного большого
+Dependency Inversion (DIP): Зависимость от абстракций, а не от конкретных классов
+Классы
+✅ Следуйте SOLID принципам
+✅ Предпочитайте композицию над наследованием
+✅ Объявляйте интерфейсы для определения контрактов
+
+## 1. Code Organization and Structure
+
+### 1.1. Directory Structure Best Practices
+
+* **Flat is better than nested (but not always).** Start with a simple structure and refactor as needed.
+* **Packages vs. Modules:** Use packages (directories with `__init__.py`) for logical grouping of modules.
+* **src layout:** Consider using a `src` directory to separate application code from project-level files (setup.py, requirements.txt,
+etc.). This helps avoid import conflicts and clarifies the project's boundaries.
+* **Typical Project Structure:**
+
+## 2. Error Handling
+- Use specific exception types, avoid bare `except:` clauses
+- Handle exceptions at appropriate levels
+- Use context managers (`with` statement) for resource management
+- Log errors with proper context and stack traces
+
+## 3. Code Organization
+- Keep functions small and focused (single responsibility principle)
+- Avoid deep nesting (max 3-4 levels)
+- Use early returns to reduce nesting
+- Group related functionality into modules and packages
+- Separate business logic from framework-specific code
+
+## 4. Async Programming (aiogram)
+- Use `async`/`await` consistently
+- Don't block the event loop with synchronous operations
+- Use `asyncio.gather()` for concurrent operations
+- Handle exceptions in async functions properly
+- Use `asyncio.create_task()` for fire-and-forget operations
+
+## 5. Database & State Management
+- Use connection pooling for database connections
+- Always close connections and clean up resources
+- Use transactions for data consistency
+- Validate and sanitize all user inputs
+- Use parameterized queries to prevent SQL injection
+
+## 6. Security
+- Never hardcode credentials or API keys (use environment variables)
+- Validate and sanitize all user inputs
+- Use secrets module for generating secure tokens
+- Keep dependencies updated
+- Log security-relevant events
+- Use only real libraries, no need to invent libraries that don't exist, and never use libraries with viruses or vulnerabilities
+
+## 7. Performance
+- Use list comprehensions instead of loops where appropriate
+- Avoid premature optimization
+- Profile code before optimizing
+- Use generators for large datasets
+- Cache expensive computations when appropriate
+
+## 8. Logging
+- Use Python's logging module, not print statements
+- Set appropriate log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- Include context in log messages
+- Don't log sensitive information (passwords, tokens, personal data)
+
+## 9. Dependencies
+- Pin dependency versions in requirements.txt
+- Keep dependencies minimal
+- Regularly update dependencies for security patches
+- Use virtual environments for isolation
+- Use only real dependencies, no need to invent dependency that doesn't exist
+
+## 10. Git & Version Control
+- Write clear, descriptive commit messages
+- Keep commits atomic and focused
+- Don't commit sensitive data or credentials
+- Use .gitignore appropriately

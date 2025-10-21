@@ -1,0 +1,11 @@
+# Зависимости для Whisper API сервера
+
+openai-whisper==20250625
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+torch==2.5.1
+torchaudio==2.5.1
+numpy==2.1.2
+
+

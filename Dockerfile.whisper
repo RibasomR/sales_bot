@@ -1,0 +1,44 @@
+## Dockerfile для локального Whisper API сервера
+## Используется для транскрибации голосовых сообщений
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка зависимостей для Whisper
+RUN pip install --no-cache-dir \
+    openai-whisper \
+    fastapi \
+    uvicorn[standard] \
+    python-multipart \
+    torch \
+    numpy
+
+# Копирование скрипта Whisper API сервера
+COPY whisper_server.py .
+
+# Загрузка модели Whisper при сборке образа (optional, закомментировано для экономии времени)
+# RUN python -c "import whisper; whisper.load_model('base')"
+
+# Открываем порт
+EXPOSE 8000
+
+# Переменные окружения
+ENV WHISPER_MODEL=base \
+    WHISPER_DEVICE=cpu \
+    PYTHONUNBUFFERED=1
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+
+# Запуск FastAPI сервера
+CMD ["uvicorn", "whisper_server:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
