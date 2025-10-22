@@ -48,13 +48,13 @@ router = Router(name="voice")
 @router.message(F.voice)
 async def handle_voice_message(message: Message, state: FSMContext) -> None:
     """
-    Обработчик голосовых сообщений.
+    Voice message handler.
     
-    Скачивает аудиофайл, конвертирует в текст через OpenRouter,
-    парсит транзакцию и показывает подтверждение пользователю.
+    Downloads audio file, converts to text via AgentRouter,
+    parses transaction and shows confirmation to user.
     
-    :param message: Сообщение с голосовым файлом
-    :param state: Контекст FSM
+    :param message: Message with voice file
+    :param state: FSM context
     :return: None
     """
     user = await get_or_create_user(

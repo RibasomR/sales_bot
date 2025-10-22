@@ -150,12 +150,12 @@ async def database_fallback_message(event: Update) -> None:
         logger.error(f"❌ Не удалось отправить fallback сообщение: {e}")
 
 
-## Функция-fallback для недоступности OpenRouter API
+## Fallback function for AgentRouter API unavailability
 async def api_fallback_message(event: Update) -> None:
     """
-    Отправить сообщение при недоступности OpenRouter API.
+    Send message when AgentRouter API is unavailable.
     
-    :param event: Объект обновления от Telegram
+    :param event: Update object from Telegram
     :return: None
     """
     text = (

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     Использует pydantic-settings для автоматической загрузки из .env файла.
     
     :ivar bot_token: Токен Telegram бота
-    :ivar openrouter_api_key: API ключ для OpenRouter
+    :ivar agentrouter_api_key: API ключ для AgentRouter
     :ivar database_url: URL для подключения к PostgreSQL
     :ivar redis_url: URL для подключения к Redis
     :ivar log_level: Уровень логирования
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     """
     
     bot_token: str = Field(..., description="Токен Telegram бота")
-    openrouter_api_key: str = Field(default="", description="API ключ OpenRouter (опционально)")
+    agentrouter_api_key: str = Field(default="", description="API ключ AgentRouter (опционально)")
     database_url: str = Field(..., description="URL базы данных PostgreSQL")
     redis_url: str = Field(default="redis://localhost:6379/0", description="URL Redis")
     

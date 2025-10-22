@@ -1,8 +1,8 @@
 """
-Сервис для работы с локальным Whisper и парсинга транзакций через OpenRouter API.
+Service for working with local Whisper and parsing transactions via AgentRouter API.
 
-Обеспечивает транскрипцию голосовых сообщений через локальный Whisper
-и парсинг текста транзакций через OpenRouter API (DeepSeek V3.1).
+Provides transcription of voice messages via local Whisper
+and parsing of transaction text via AgentRouter API (DeepSeek V3.2).
 """
 
 import asyncio
@@ -17,10 +17,10 @@ from loguru import logger
 from config import get_settings
 
 
-## Конфигурация моделей
+## Model configuration
 WHISPER_MODEL_NAME = "base"
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEEPSEEK_MODEL = "deepseek/deepseek-chat"
+AGENTROUTER_BASE_URL = "https://agentrouter.org/v1"
+DEEPSEEK_MODEL = "deepseek-v3.2"
 MAX_RETRIES = 3
 TIMEOUT_SECONDS = 30
 
@@ -28,37 +28,37 @@ TIMEOUT_SECONDS = 30
 _whisper_model = None
 
 
-class OpenRouterError(Exception):
+class AgentRouterError(Exception):
     """
-    Базовое исключение для ошибок OpenRouter API.
-    """
-    pass
-
-
-class TranscriptionError(OpenRouterError):
-    """
-    Ошибка при транскрипции аудио.
+    Base exception for AgentRouter API errors.
     """
     pass
 
 
-class ParsingError(OpenRouterError):
+class TranscriptionError(AgentRouterError):
     """
-    Ошибка при парсинге текста транзакции.
+    Error during audio transcription.
     """
     pass
 
 
-## Загрузка модели Whisper (синхронная)
+class ParsingError(AgentRouterError):
+    """
+    Error during transaction text parsing.
+    """
+    pass
+
+
+## Load Whisper model (synchronous)
 def _load_whisper_model():
     """
-    Загрузить модель Whisper в память (ленивая загрузка).
+    Load Whisper model into memory (lazy loading).
     
-    Модель загружается один раз при первом вызове и сохраняется в памяти.
-    Используется модель 'base' как компромисс между скоростью и точностью.
+    Model is loaded once on first call and kept in memory.
+    Uses 'base' model as a compromise between speed and accuracy.
     
-    :return: Загруженная модель Whisper
-    :raises TranscriptionError: При ошибке загрузки модели
+    :return: Loaded Whisper model
+    :raises TranscriptionError: If model loading fails
     """
     global _whisper_model
     
@@ -74,18 +74,18 @@ def _load_whisper_model():
     return _whisper_model
 
 
-## Транскрипция аудио в текст через локальный Whisper
+## Transcribe audio to text via local Whisper
 async def transcribe_audio(audio_path: str) -> str:
     """
-    Транскрибировать аудиофайл в текст через локальный Whisper.
+    Transcribe audio file to text via local Whisper.
     
-    Использует локально установленную модель Whisper для преобразования речи в текст.
-    Работает полностью офлайн, не требует API ключей и бесплатна.
+    Uses locally installed Whisper model to convert speech to text.
+    Works completely offline, requires no API keys and is free.
     
-    :param audio_path: Путь к аудиофайлу
-    :return: Распознанный текст
-    :raises TranscriptionError: При ошибке транскрипции
-    :raises FileNotFoundError: Если аудиофайл не найден
+    :param audio_path: Path to audio file
+    :return: Recognized text
+    :raises TranscriptionError: If transcription fails
+    :raises FileNotFoundError: If audio file not found
     
     Example:
         >>> text = await transcribe_audio("voice_message.ogg")
@@ -124,20 +124,20 @@ async def transcribe_audio(audio_path: str) -> str:
         raise TranscriptionError(f"Не удалось транскрибировать аудио: {e}")
 
 
-## Парсинг текста транзакции через OpenRouter API
+## Parse transaction text via AgentRouter API
 async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     """
-    Парсинг текста транзакции через OpenRouter API (DeepSeek V3.1).
+    Parse transaction text via AgentRouter API (DeepSeek V3.2).
     
-    Отправляет текст в LLM для извлечения структурированных данных:
-    - Тип операции (income/expense)
-    - Сумму (в рублях)
-    - Категорию
-    - Описание
+    Sends text to LLM to extract structured data:
+    - Operation type (income/expense)
+    - Amount (in rubles)
+    - Category
+    - Description
     
-    :param text: Текст для парсинга
-    :return: Словарь с распознанными данными или None при ошибке
-    :raises ParsingError: При критической ошибке парсинга
+    :param text: Text to parse
+    :return: Dictionary with recognized data or None on error
+    :raises ParsingError: On critical parsing error
     
     Example:
         >>> data = await parse_transaction_text("Потратил 500 рублей на продукты")
@@ -152,18 +152,18 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     if not text or not text.strip():
         raise ParsingError("Текст для парсинга пустой")
     
-    logger.info(f"Парсинг текста транзакции через OpenRouter: '{text[:50]}...'")
+    logger.info(f"Парсинг текста транзакции через AgentRouter: '{text[:50]}...'")
     
     settings = get_settings()
     
-    if not settings.openrouter_api_key:
+    if not settings.agentrouter_api_key:
         raise ParsingError(
-            "OpenRouter API ключ не настроен. "
-            "Добавьте OPENROUTER_API_KEY в .env файл. "
-            "Инструкция: docs/openrouter_setup.md"
+            "AgentRouter API ключ не настроен. "
+            "Добавьте AGENTROUTER_API_KEY в .env файл. "
+            "Получить ключ: https://agentrouter.org/console/token"
         )
     
-    ## Промпт для парсинга транзакции через LLM
+    ## Prompt for parsing transaction via LLM
     prompt = """Проанализируй текст и извлеки информацию о финансовой транзакции.
 Верни JSON с полями:
 - type: "income" или "expense"
@@ -181,11 +181,10 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
 
 Верни ТОЛЬКО JSON, без дополнительного текста.""".format(text=text)
     
-    ## Отправляем запрос в OpenRouter
+    ## Send request to AgentRouter
     headers = {
-        "Authorization": f"Bearer {settings.openrouter_api_key}",
-        "HTTP-Referer": "https://github.com/your-repo",
-        "X-Title": "Finance Bot"
+        "Authorization": f"Bearer {settings.agentrouter_api_key}",
+        "Content-Type": "application/json"
     }
     
     payload = {
@@ -201,22 +200,22 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
                 response = await client.post(
-                    f"{OPENROUTER_BASE_URL}/chat/completions",
+                    f"{AGENTROUTER_BASE_URL}/chat/completions",
                     headers=headers,
                     json=payload
                 )
                 
                 if response.status_code != 200:
-                    logger.error(f"OpenRouter API ошибка {response.status_code}: {response.text}")
+                    logger.error(f"AgentRouter API ошибка {response.status_code}: {response.text}")
                     if attempt < MAX_RETRIES - 1:
                         await asyncio.sleep(1)
                         continue
-                    raise ParsingError(f"OpenRouter API вернул ошибку: {response.status_code}")
+                    raise ParsingError(f"AgentRouter API вернул ошибку: {response.status_code}")
                 
                 result = response.json()
                 content = result["choices"][0]["message"]["content"].strip()
                 
-                ## Извлекаем JSON из ответа (может быть обёрнут в ```json```)
+                ## Extract JSON from response (may be wrapped in ```json```)
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
@@ -224,7 +223,7 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
                 
                 transaction_data = json.loads(content)
                 
-                ## Валидация данных
+                ## Validate data
                 if not transaction_data.get("type") in ["income", "expense"]:
                     raise ParsingError("Некорректный тип транзакции")
                 
@@ -234,60 +233,60 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
                 if transaction_data["amount"] > 10_000_000:
                     raise ParsingError("Сумма слишком большая (максимум 10 000 000)")
                 
-                logger.success(f"Успешно распознано через OpenRouter: {transaction_data}")
+                logger.success(f"Успешно распознано через AgentRouter: {transaction_data}")
                 return transaction_data
                 
         except httpx.TimeoutException:
-            logger.warning(f"Timeout при запросе к OpenRouter (попытка {attempt + 1}/{MAX_RETRIES})")
+            logger.warning(f"Timeout при запросе к AgentRouter (попытка {attempt + 1}/{MAX_RETRIES})")
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(2)
                 continue
             raise ParsingError(
-                "OpenRouter API недоступен (timeout). "
+                "AgentRouter API недоступен (timeout). "
                 "Проверьте интернет соединение и попробуйте позже."
             )
             
         except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Ошибка парсинга ответа от OpenRouter: {e}")
+            logger.error(f"Ошибка парсинга ответа от AgentRouter: {e}")
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(1)
                 continue
             raise ParsingError(
-                "Не удалось обработать ответ от OpenRouter API. "
+                "Не удалось обработать ответ от AgentRouter API. "
                 "Попробуйте еще раз или обратитесь к администратору."
             )
             
         except Exception as e:
-            logger.error(f"Неожиданная ошибка при запросе к OpenRouter: {e}")
+            logger.error(f"Неожиданная ошибка при запросе к AgentRouter: {e}")
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(2)
                 continue
             raise ParsingError(
-                f"Ошибка при обращении к OpenRouter API: {str(e)}"
+                f"Ошибка при обращении к AgentRouter API: {str(e)}"
             )
     
     raise ParsingError(
-        "Все попытки обращения к OpenRouter API провалились. "
+        "Все попытки обращения к AgentRouter API провалились. "
         "Попробуйте позже."
     )
 
 
-## Найти категорию по названию с учетом похожести
+## Find category by name with similarity matching
 def find_matching_category(
     category_name: Optional[str],
     available_categories: list,
     default_category_name: str = "Другое"
 ) -> tuple[Optional[int], str]:
     """
-    Найти подходящую категорию по названию из распознанного текста.
+    Find matching category by name from recognized text.
     
-    Ищет категорию по частичному совпадению названия (без учета регистра).
-    Если не найдена - возвращает категорию "Другое".
+    Searches for category by partial name match (case-insensitive).
+    If not found - returns "Другое" category.
     
-    :param category_name: Название категории из распознанного текста
-    :param available_categories: Список доступных категорий (Category объекты)
-    :param default_category_name: Название категории по умолчанию
-    :return: Кортеж (category_id, category_display_name)
+    :param category_name: Category name from recognized text
+    :param available_categories: List of available categories (Category objects)
+    :param default_category_name: Default category name
+    :return: Tuple (category_id, category_display_name)
     
     Example:
         >>> categories = [Category(id=1, name="Продукты"), Category(id=2, name="Другое")]

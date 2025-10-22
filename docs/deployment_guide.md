@@ -131,8 +131,8 @@ nano .env
 # Telegram Bot Token (получить у @BotFather)
 BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 
-# OpenRouter API Key (для парсинга текста)
-OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxx
+# AgentRouter API Key (для парсинга текста)
+AGENTROUTER_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxx
 
 # PostgreSQL пароль (сгенерировать надежный пароль)
 POSTGRES_PASSWORD=strong_unique_password_123

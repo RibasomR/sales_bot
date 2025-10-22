@@ -72,8 +72,8 @@ cp .env.example .env
 # Токен вашего Telegram бота (получите у @BotFather)
 BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 
-# API ключ OpenRouter (получите на openrouter.ai)
-OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# API ключ AgentRouter (получите на agentrouter.org/console/token)
+AGENTROUTER_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # URL подключения к PostgreSQL
 # Формат: postgresql+asyncpg://username:password@host:port/database_name

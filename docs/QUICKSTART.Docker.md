@@ -95,13 +95,13 @@ docker compose version
 3. Следуйте инструкциям
 4. Скопируйте полученный токен
 
-#### Получение OpenRouter API Key (опционально)
+#### Получение AgentRouter API Key (опционально)
 
-1. Зарегистрируйтесь на [OpenRouter](https://openrouter.ai/)
-2. Создайте API ключ
+1. Зарегистрируйтесь на [AgentRouter](https://agentrouter.org/) через GitHub или Linux.do
+2. Получите API ключ в [консоли](https://agentrouter.org/console/token)
 3. Добавьте в `.env`
 
-> **Примечание**: OpenRouter используется только для парсинга текста после транскрибации. Сама транскрибация происходит локально через Whisper.
+> **Примечание**: AgentRouter используется только для парсинга текста после транскрибации. Сама транскрибация происходит локально через Whisper.
 
 #### Генерация паролей
 
@@ -122,7 +122,7 @@ POSTGRES_PASSWORD=generated_strong_password
 REDIS_PASSWORD=another_generated_password
 
 # ============ ОПЦИОНАЛЬНО ============
-OPENROUTER_API_KEY=your_openrouter_key  # Для парсинга текста
+AGENTROUTER_API_KEY=your_agentrouter_key  # Для парсинга текста
 
 # Whisper модель (tiny/base/small/medium/large)
 WHISPER_MODEL=base  # Рекомендуется для баланса скорости/качества
