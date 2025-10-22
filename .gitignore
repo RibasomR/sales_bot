@@ -73,4 +73,8 @@ tmp/
 # Audio files from Telegram
 voice_messages/
 audio_temp/
+temp_audio/
+
+# Node modules (if any)
+node_modules/
 
