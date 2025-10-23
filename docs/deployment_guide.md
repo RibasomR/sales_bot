@@ -50,7 +50,6 @@ sudo ufw status
 sudo apt remove docker docker-engine docker.io containerd runc
 
 # Установка зависимостей
-sudo apt update
 sudo apt install -y \
     apt-transport-https \
     ca-certificates \
@@ -81,12 +80,7 @@ newgrp docker
 docker --version
 docker compose version
 ```
-
-### Установка Make (опционально)
-
-```bash
-sudo apt install -y make
-```
+sudo apt update
 
 ---
 
@@ -169,19 +163,6 @@ WHISPER_THREADS=4       # Количество CPU потоков (2-8)
 
 # Или для production режима
 ./deploy.sh prod
-```
-
-### Метод 2: С использованием Makefile
-
-```bash
-# Первоначальная установка
-make install
-
-# Или пошагово:
-make build      # Сборка образов
-make up         # Запуск сервисов
-sleep 30        # Ожидание готовности
-make migrate    # Применение миграций
 ```
 
 ### Метод 3: Вручную через docker-compose
