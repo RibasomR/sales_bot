@@ -29,26 +29,35 @@ def upgrade() -> None:
     ## Create ENUM types (PostgreSQL only)
     ## SQLite doesn't support ENUM, uses VARCHAR instead
     bind = op.get_bind()
+    
+    ## Import required SQLAlchemy utilities
+    from sqlalchemy import text, inspect
+    
     if bind.dialect.name == 'postgresql':
         # Check if types already exist before creating
-        op.execute("""
-            DO $$ BEGIN
-                CREATE TYPE category_type AS ENUM ('income', 'expense');
-            EXCEPTION
-                WHEN duplicate_object THEN null;
-            END $$;
-        """)
-        op.execute("""
-            DO $$ BEGIN
-                CREATE TYPE transaction_type AS ENUM ('income', 'expense');
-            EXCEPTION
-                WHEN duplicate_object THEN null;
-            END $$;
-        """)
+        # Check and create category_type if not exists
+        result = bind.execute(text(
+            "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'category_type')"
+        ))
+        if not result.scalar():
+            op.execute("CREATE TYPE category_type AS ENUM ('income', 'expense')")
+        
+        # Check and create transaction_type if not exists
+        result = bind.execute(text(
+            "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type')"
+        ))
+        if not result.scalar():
+            op.execute("CREATE TYPE transaction_type AS ENUM ('income', 'expense')")
+    
+    ## Check if tables already exist
+    
+    inspector = inspect(bind)
+    existing_tables = inspector.get_table_names()
     
     ## Create users table with all fields
-    op.create_table(
-        'users',
+    if 'users' not in existing_tables:
+        op.create_table(
+            'users',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('telegram_id', sa.BigInteger(), nullable=False),
         sa.Column('username', sa.String(255), nullable=True),
@@ -70,13 +79,14 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_users')),
         sa.UniqueConstraint('telegram_id', name=op.f('uq_users_telegram_id')),
-        comment='Bot users'
-    )
-    op.create_index(op.f('ix_users_telegram_id'), 'users', ['telegram_id'], unique=False)
+            comment='Bot users'
+        )
+        op.create_index(op.f('ix_users_telegram_id'), 'users', ['telegram_id'], unique=False)
     
     ## Create categories table
-    op.create_table(
-        'categories',
+    if 'categories' not in existing_tables:
+        op.create_table(
+            'categories',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('type', sa.Enum('income', 'expense', name='category_type', create_type=False), nullable=False),
@@ -97,23 +107,24 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_categories_user_id_users'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_categories')),
-        comment='Income and expense categories'
-    )
-    op.create_index(op.f('ix_categories_type'), 'categories', ['type'], unique=False)
-    op.create_index(op.f('ix_categories_is_default'), 'categories', ['is_default'], unique=False)
-    op.create_index(op.f('ix_categories_user_id'), 'categories', ['user_id'], unique=False)
-    
-    ## Composite index for category filtering by user and type
-    op.create_index(
-        'ix_categories_user_type',
-        'categories',
-        ['user_id', 'type'],
-        unique=False
-    )
+            comment='Income and expense categories'
+        )
+        op.create_index(op.f('ix_categories_type'), 'categories', ['type'], unique=False)
+        op.create_index(op.f('ix_categories_is_default'), 'categories', ['is_default'], unique=False)
+        op.create_index(op.f('ix_categories_user_id'), 'categories', ['user_id'], unique=False)
+        
+        ## Composite index for category filtering by user and type
+        op.create_index(
+            'ix_categories_user_type',
+            'categories',
+            ['user_id', 'type'],
+            unique=False
+        )
     
     ## Create transactions table
-    op.create_table(
-        'transactions',
+    if 'transactions' not in existing_tables:
+        op.create_table(
+            'transactions',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('type', sa.Enum('income', 'expense', name='transaction_type', create_type=False), nullable=False),
@@ -135,39 +146,39 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_transactions_user_id_users'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['category_id'], ['categories.id'], name=op.f('fk_transactions_category_id_categories'), ondelete='RESTRICT'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_transactions')),
-        comment='User financial transactions'
-    )
-    
-    ## Single column indexes
-    op.create_index(op.f('ix_transactions_user_id'), 'transactions', ['user_id'], unique=False)
-    op.create_index(op.f('ix_transactions_type'), 'transactions', ['type'], unique=False)
-    op.create_index(op.f('ix_transactions_category_id'), 'transactions', ['category_id'], unique=False)
-    op.create_index(op.f('ix_transactions_created_at'), 'transactions', ['created_at'], unique=False)
-    
-    ## Composite indexes for optimization
-    ## Filter transactions by user and type
-    op.create_index(
-        'ix_transactions_user_type',
-        'transactions',
-        ['user_id', 'type'],
-        unique=False
-    )
-    
-    ## Filter transactions by user and date
-    op.create_index(
-        'ix_transactions_user_created',
-        'transactions',
-        ['user_id', 'created_at'],
-        unique=False
-    )
-    
-    ## Category statistics for period
-    op.create_index(
-        'ix_transactions_category_created',
-        'transactions',
-        ['category_id', 'created_at'],
-        unique=False
-    )
+            comment='User financial transactions'
+        )
+        
+        ## Single column indexes
+        op.create_index(op.f('ix_transactions_user_id'), 'transactions', ['user_id'], unique=False)
+        op.create_index(op.f('ix_transactions_type'), 'transactions', ['type'], unique=False)
+        op.create_index(op.f('ix_transactions_category_id'), 'transactions', ['category_id'], unique=False)
+        op.create_index(op.f('ix_transactions_created_at'), 'transactions', ['created_at'], unique=False)
+        
+        ## Composite indexes for optimization
+        ## Filter transactions by user and type
+        op.create_index(
+            'ix_transactions_user_type',
+            'transactions',
+            ['user_id', 'type'],
+            unique=False
+        )
+        
+        ## Filter transactions by user and date
+        op.create_index(
+            'ix_transactions_user_created',
+            'transactions',
+            ['user_id', 'created_at'],
+            unique=False
+        )
+        
+        ## Category statistics for period
+        op.create_index(
+            'ix_transactions_category_created',
+            'transactions',
+            ['category_id', 'created_at'],
+            unique=False
+        )
 
 
 def downgrade() -> None:
