@@ -30,10 +30,17 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Проверка наличия Docker Compose
-if ! command -v docker-compose &> /dev/null; then
+# Проверка наличия Docker Compose (v2 или v1)
+if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/null; then
     log_error "Docker Compose не установлен."
     exit 1
+fi
+
+# Определяем команду для Docker Compose
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
+    DOCKER_COMPOSE="docker-compose"
 fi
 
 # Проверка наличия .env файла
@@ -54,19 +61,19 @@ fi
 
 # Остановка старых контейнеров (если есть)
 log_info "Остановка старых контейнеров..."
-docker-compose down || true
+$DOCKER_COMPOSE down || true
 
 # Сборка образов
 log_info "Сборка Docker образов..."
-docker-compose build --no-cache
+$DOCKER_COMPOSE build --no-cache
 
 # Запуск сервисов
 log_info "Запуск сервисов..."
 if [ "$1" == "prod" ]; then
     log_info "Запуск в production режиме..."
-    docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+    $DOCKER_COMPOSE -f docker-compose.yml -f docker-compose.prod.yml up -d
 else
-    docker-compose up -d
+    $DOCKER_COMPOSE up -d
 fi
 
 # Ожидание готовности сервисов
@@ -75,20 +82,20 @@ sleep 30
 
 # Применение миграций
 log_info "Применение миграций БД..."
-docker-compose exec -T bot alembic upgrade head
+$DOCKER_COMPOSE exec -T bot alembic upgrade head
 
 # Проверка статуса
 log_info "Проверка статуса контейнеров..."
-docker-compose ps
+$DOCKER_COMPOSE ps
 
 # Проверка логов
 log_info "Последние логи бота:"
-docker-compose logs --tail=20 bot
+$DOCKER_COMPOSE logs --tail=20 bot
 
 echo ""
 log_info "✅ Деплой завершен!"
-log_info "Используйте 'docker-compose logs -f bot' для просмотра логов"
-log_info "Используйте 'docker-compose ps' для проверки статуса"
+log_info "Используйте '$DOCKER_COMPOSE logs -f bot' для просмотра логов"
+log_info "Используйте '$DOCKER_COMPOSE ps' для проверки статуса"
 echo ""
 
 
