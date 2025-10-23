@@ -23,8 +23,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  whisper:
-    ports: []  # Не экспонируем порт наружу в продакшене
+  bot:
     deploy:
       resources:
         limits:
@@ -33,21 +32,6 @@ services:
         reservations:
           cpus: '1'
           memory: 2G
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  bot:
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
       restart_policy:
         condition: on-failure
         delay: 5s

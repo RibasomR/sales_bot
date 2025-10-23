@@ -141,13 +141,17 @@ async def handle_voice_message(message: Message, state: FSMContext) -> None:
             "Попробуйте еще раз или используйте /add"
         )
     except ParsingError as e:
-        logger.error(f"Ошибка парсинга: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка парсинга: {safe_error}")
         await processing_msg.edit_text(
             f"❌ Ошибка обработки: {e}\n\n"
             "Попробуйте еще раз или используйте /add"
         )
     except Exception as e:
-        logger.error(f"Неожиданная ошибка при обработке голоса: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Неожиданная ошибка при обработке голоса: {safe_error}")
         await processing_msg.edit_text(
             "❌ Произошла ошибка при обработке голосового сообщения.\n\n"
             "Попробуйте еще раз или используйте /add"
@@ -240,7 +244,9 @@ async def process_voice_confirm(callback: CallbackQuery, state: FSMContext) -> N
         await state.clear()
         
     except Exception as e:
-        logger.error(f"Ошибка сохранения голосовой транзакции: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка сохранения голосовой транзакции: {safe_error}")
         await callback.message.edit_text(
             "❌ Произошла ошибка при сохранении. Попробуйте еще раз."
         )

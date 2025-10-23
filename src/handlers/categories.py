@@ -320,7 +320,9 @@ async def confirm_create_category(callback: CallbackQuery, state: FSMContext) ->
         )
         
     except Exception as e:
-        logger.error(f"Ошибка создания категории: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка создания категории: {safe_error}")
         await callback.message.edit_text(
             "❌ Произошла ошибка при создании категории.\n\n"
             "Попробуй еще раз.",

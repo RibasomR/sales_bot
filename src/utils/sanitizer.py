@@ -182,14 +182,22 @@ def sanitize_exception_message(exception: Exception) -> str:
     """
     message = str(exception)
     
-    # Pattern for potential API keys/tokens (alphanumeric strings 20+ chars)
-    token_pattern = r"\b([a-zA-Z0-9_-]{20,})\b"
+    # Pattern for potential API keys/tokens (alphanumeric strings with dashes/underscores, 16+ chars)
+    token_pattern = r"\b([a-zA-Z0-9_-]{16,})\b"
     
     def mask_token(match):
         token = match.group(1)
-        return mask_sensitive_value(token, visible_chars=4)
+        # Only mask if it looks like a token (has mix of chars or starts with known prefixes)
+        if len(token) >= 16:
+            return mask_sensitive_value(token, visible_chars=4)
+        return token
     
     sanitized = re.sub(token_pattern, mask_token, message)
+    
+    # Also mask database URLs with credentials
+    url_pattern = r"([\w+]+://)([\w]*:)([^@\s]+@)"
+    sanitized = re.sub(url_pattern, r"\1\2***@", sanitized)
+    
     return sanitized
 
 

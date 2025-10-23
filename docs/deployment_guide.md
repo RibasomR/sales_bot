@@ -5,15 +5,37 @@
 - **CPU**: 2 ядра (рекомендуется 4)
 - **RAM**: 2 GB (рекомендуется 4 GB)
 - **Диск**: 10 GB
+- **ОС**: Ubuntu 20.04+, Debian 11+
 
 ---
 
-## 1. Установка Docker
+## 1. Подготовка сервера
 
 ```bash
-# Установка Docker и Docker Compose
+# Обновление системы
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y docker.io docker-compose-plugin git curl
+
+# Установка базовых утилит
+sudo apt install -y git curl wget
+
+# Установка Docker и Docker Compose
+# Добавление официального GPG ключа Docker
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Добавление репозитория Docker
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Обновление списка пакетов
+sudo apt-get update
+
+# Установка Docker Engine и Docker Compose
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Добавление пользователя в группу docker
 sudo usermod -aG docker $USER
