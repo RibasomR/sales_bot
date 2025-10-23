@@ -38,15 +38,15 @@ def upgrade() -> None:
         # Check and create category_type if not exists
         result = bind.execute(text(
             "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'category_type')"
-        ))
-        if not result.scalar():
+        )).fetchone()
+        if not result[0]:
             op.execute("CREATE TYPE category_type AS ENUM ('income', 'expense')")
         
         # Check and create transaction_type if not exists
         result = bind.execute(text(
             "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type')"
-        ))
-        if not result.scalar():
+        )).fetchone()
+        if not result[0]:
             op.execute("CREATE TYPE transaction_type AS ENUM ('income', 'expense')")
     
     ## Check if tables already exist
