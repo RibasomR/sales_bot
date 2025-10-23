@@ -385,7 +385,77 @@ sudo systemctl status finance-bot   # Статус
 
 ---
 
-## 6. Решение проблем
+## 6. Очистка места на диске
+
+### Если закончилось место во время сборки Docker
+
+#### ⚠️ Ошибка: "No space left on device"
+
+Если при сборке Docker образа появляется ошибка `dpkg: error processing archive ... failed to write (No space left on device)`, выполните следующие действия:
+
+```bash
+# 1. Проверьте доступное место
+df -h
+
+# 2. Остановите и удалите все контейнеры
+docker stop $(docker ps -aq) 2>/dev/null
+docker rm $(docker ps -aq) 2>/dev/null
+
+# 3. Удалите неиспользуемые образы
+docker image prune -a -f
+
+# 4. Удалите неиспользуемые volumes
+docker volume prune -f
+
+# 5. Удалите build cache
+docker builder prune -a -f
+
+# 6. Полная очистка Docker (ВНИМАНИЕ: удалит ВСЁ)
+docker system prune -a --volumes -f
+
+# 7. Проверьте освободившееся место
+df -h
+
+# 8. Очистите системные логи (освободит 1-2 GB)
+sudo journalctl --vacuum-time=7d
+sudo journalctl --vacuum-size=100M
+
+# 9. Очистите APT кэш
+sudo apt-get clean
+sudo apt-get autoclean
+sudo apt-get autoremove -y
+
+# 10. Удалите старые ядра Linux (если есть)
+sudo apt-get autoremove --purge -y
+
+# 11. Проверьте итоговое место
+df -h
+```
+
+#### После очистки пересоберите образ:
+
+```bash
+cd ~/finance-bot
+docker compose build --no-cache
+docker compose up -d
+```
+
+### Мониторинг использования диска
+
+```bash
+# Показать использование по директориям
+du -sh /*
+
+# Найти большие файлы (>100MB)
+find / -type f -size +100M 2>/dev/null
+
+# Проверка места Docker
+docker system df
+```
+
+---
+
+## 7. Решение проблем
 
 ### Бот не запускается
 
