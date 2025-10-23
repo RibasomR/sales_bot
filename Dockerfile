@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     git \
     build-essential \
+    cmake \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean

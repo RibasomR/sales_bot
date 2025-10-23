@@ -80,7 +80,24 @@ newgrp docker
 docker --version
 docker compose version
 ```
-sudo apt update
+
+### Установка зависимостей для сборки Whisper.cpp
+
+> 📦 **Важно**: Эти зависимости необходимы для сборки Docker-образа с Whisper.cpp
+
+```bash
+# Установка build-инструментов для компиляции whisper.cpp
+sudo apt install -y \
+    build-essential \
+    cmake \
+    git \
+    ffmpeg
+
+# Проверка установки
+cmake --version  # Должна быть версия 3.10+
+gcc --version
+make --version
+```
 
 ---
 
