@@ -25,8 +25,21 @@ def upgrade() -> None:
     ## SQLite не поддерживает ENUM, использует VARCHAR
     bind = op.get_bind()
     if bind.dialect.name == 'postgresql':
-        op.execute("CREATE TYPE category_type AS ENUM ('income', 'expense')")
-        op.execute("CREATE TYPE transaction_type AS ENUM ('income', 'expense')")
+        # Check if types already exist before creating
+        op.execute("""
+            DO $$ BEGIN
+                CREATE TYPE category_type AS ENUM ('income', 'expense');
+            EXCEPTION
+                WHEN duplicate_object THEN null;
+            END $$;
+        """)
+        op.execute("""
+            DO $$ BEGIN
+                CREATE TYPE transaction_type AS ENUM ('income', 'expense');
+            EXCEPTION
+                WHEN duplicate_object THEN null;
+            END $$;
+        """)
     
     # Создание таблицы users
     op.create_table(

@@ -45,17 +45,24 @@ fi
 
 # Проверка наличия .env файла
 if [ ! -f .env ]; then
-    log_warn ".env файл не найден. Копируем .env.template.docker..."
-    cp .env.template.docker .env
+    log_warn ".env файл не найден. Копируем env.example..."
+    cp env.example .env
     log_error "Файл .env создан. ОБЯЗАТЕЛЬНО отредактируйте его перед запуском!"
     log_error "Измените BOT_TOKEN, пароли и другие параметры."
     exit 1
 fi
 
 # Проверка наличия критических переменных
-if grep -q "your_telegram_bot_token_here" .env || grep -q "change_me_in_production" .env; then
+if grep -q "your_telegram_bot_token_here" .env || grep -q "change_me_in_production" .env || grep -q "sk-your_agentrouter_key_here" .env; then
     log_error ".env файл содержит незаполненные значения!"
     log_error "Отредактируйте .env файл перед деплоем."
+    log_error "Обязательные параметры:"
+    log_error "  - BOT_TOKEN (получите у @BotFather)"
+    log_error "  - AGENTROUTER_API_KEY (получите на agentrouter.org)"
+    if [ "$1" == "prod" ]; then
+        log_error "  - POSTGRES_PASSWORD (придумайте надежный пароль)"
+        log_error "  - REDIS_PASSWORD (придумайте надежный пароль)"
+    fi
     exit 1
 fi
 
