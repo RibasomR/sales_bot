@@ -196,3 +196,29 @@ WHISPER_MODEL=tiny
 WHISPER_THREADS=2
 ```
 
+### Ошибка миграции: "type already exists"
+
+Если при запуске возникает ошибка `DuplicateObjectError: type "category_type" already exists`:
+
+**Решение 1: Пересоздать базу (если данные не важны)**
+```bash
+docker compose -f docker-compose.prod.yml down
+docker volume rm finance_bot_app_postgres_data
+docker compose -f docker-compose.prod.yml up -d
+```
+
+**Решение 2: Исправить существующую базу**
+```bash
+# Подключиться к базе
+docker exec -it finance_bot_postgres psql -U finance_bot_user -d finance_bot_db
+
+# В psql выполнить:
+DELETE FROM alembic_version;
+\q
+
+# Применить миграцию заново
+docker compose -f docker-compose.prod.yml exec app alembic upgrade head
+```
+
+Подробнее см. [migration_fix.md](migration_fix.md)
+

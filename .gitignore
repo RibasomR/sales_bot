@@ -78,3 +78,7 @@ temp_audio/
 # Node modules (if any)
 node_modules/
 
+# Database backups
+backups/
+*.sql
+
