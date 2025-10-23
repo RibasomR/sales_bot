@@ -1,8 +1,9 @@
 """
-FastAPI сервер для локальной транскрибации аудио через Whisper.
+FastAPI сервер для локальной транскрибации аудио через Whisper.cpp.
 
 Предоставляет REST API для обработки голосовых сообщений.
 Используется как альтернатива OpenAI Whisper API.
+Whisper.cpp обеспечивает 2-4x лучшую производительность.
 
 :author: Finance Bot Team
 :date: 2025-10-20
@@ -12,25 +13,22 @@ import os
 import tempfile
 from typing import Optional
 
-import whisper
+from pywhispercpp.model import Model
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-import torch
 
-app = FastAPI(title="Whisper Transcription API", version="1.0.0")
+app = FastAPI(title="Whisper.cpp Transcription API", version="2.0.0")
 
-## Загрузка модели Whisper при старте
+## Load Whisper.cpp model at startup
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
-WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
+WHISPER_THREADS = int(os.getenv("WHISPER_THREADS", "4"))
 
-# Проверка доступности CUDA
-if WHISPER_DEVICE == "cuda" and not torch.cuda.is_available():
-    WHISPER_DEVICE = "cpu"
-    print("⚠️ CUDA недоступна, используется CPU")
-
-print(f"🎤 Загрузка модели Whisper: {WHISPER_MODEL} на устройстве: {WHISPER_DEVICE}")
-model = whisper.load_model(WHISPER_MODEL, device=WHISPER_DEVICE)
-print("✅ Модель Whisper загружена успешно")
+print(f"🎤 Загрузка модели Whisper.cpp: {WHISPER_MODEL} (потоков: {WHISPER_THREADS})")
+model = Model(
+    model=f"ggml-{WHISPER_MODEL}.bin",
+    n_threads=WHISPER_THREADS
+)
+print("✅ Модель Whisper.cpp загружена успешно")
 
 
 @app.get("/health")
@@ -41,7 +39,12 @@ async def health_check():
     :return: Статус сервиса
     :rtype: dict
     """
-    return {"status": "healthy", "model": WHISPER_MODEL, "device": WHISPER_DEVICE}
+    return {
+        "status": "healthy",
+        "model": WHISPER_MODEL,
+        "backend": "whisper.cpp",
+        "threads": WHISPER_THREADS
+    }
 
 
 @app.post("/transcribe")
@@ -81,25 +84,27 @@ async def transcribe_audio(
         )
     
     try:
-        # Сохранение файла во временную директорию
+        # Save file to temporary directory
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
             content = await file.read()
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Транскрибация
+        # Transcribe using Whisper.cpp
         result = model.transcribe(
             tmp_file_path,
-            language=language,
-            fp16=False  # Отключаем fp16 для CPU
+            language=language
         )
         
-        # Удаление временного файла
+        # Delete temporary file
         os.unlink(tmp_file_path)
         
+        # Extract text from result
+        text = result.strip() if isinstance(result, str) else result.get("text", "").strip()
+        
         return JSONResponse({
-            "text": result["text"].strip(),
-            "language": result.get("language", language)
+            "text": text,
+            "language": language
         })
     
     except Exception as e:
@@ -125,10 +130,11 @@ async def root():
     :rtype: dict
     """
     return {
-        "service": "Whisper Transcription API",
-        "version": "1.0.0",
+        "service": "Whisper.cpp Transcription API",
+        "version": "2.0.0",
         "model": WHISPER_MODEL,
-        "device": WHISPER_DEVICE,
+        "backend": "whisper.cpp",
+        "threads": WHISPER_THREADS,
         "endpoints": {
             "health": "/health",
             "transcribe": "/transcribe (POST)"

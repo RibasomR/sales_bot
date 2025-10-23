@@ -44,7 +44,7 @@ services:
       timeout: 5s
       retries: 5
 
-  ## Whisper API сервер для транскрибации голоса
+  ## Whisper.cpp API сервер для транскрибации голоса (2-4x faster than openai-whisper)
   whisper:
     build:
       context: .
@@ -53,21 +53,13 @@ services:
     restart: unless-stopped
     environment:
       WHISPER_MODEL: ${WHISPER_MODEL:-base}
-      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_THREADS: ${WHISPER_THREADS:-4}
     volumes:
-      - whisper_cache:/root/.cache/whisper
+      - whisper_cache:/root/.cache/whisper.cpp
     ports:
       - "${WHISPER_PORT:-8000}:8000"
     networks:
       - finance_bot_network
-    # Для использования GPU (если доступен)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
 
   ## Основное приложение Telegram-бота
   bot:

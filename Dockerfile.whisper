@@ -1,37 +1,37 @@
-## Dockerfile для локального Whisper API сервера
+## Dockerfile для локального Whisper.cpp API сервера
 ## Используется для транскрибации голосовых сообщений
+## Whisper.cpp provides 2-4x better performance than openai-whisper
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Установка системных зависимостей
+# Install system dependencies including build tools for whisper.cpp
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     git \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Установка зависимостей для Whisper
+# Install Python dependencies for Whisper.cpp
 RUN pip install --no-cache-dir \
-    openai-whisper \
+    pywhispercpp \
     fastapi \
     uvicorn[standard] \
-    python-multipart \
-    torch \
-    numpy
+    python-multipart
 
-# Копирование скрипта Whisper API сервера
+# Copy Whisper.cpp API server script
 COPY whisper_server.py .
 
-# Загрузка модели Whisper при сборке образа (optional, закомментировано для экономии времени)
-# RUN python -c "import whisper; whisper.load_model('base')"
+# Models will be auto-downloaded on first use to /root/.cache/whisper.cpp/
+# Available models: tiny, base, small, medium, large
 
-# Открываем порт
+# Expose port for API
 EXPOSE 8000
 
-# Переменные окружения
+# Default environment variables
 ENV WHISPER_MODEL=base \
-    WHISPER_DEVICE=cpu \
+    WHISPER_THREADS=4 \
     PYTHONUNBUFFERED=1
 
 # Healthcheck

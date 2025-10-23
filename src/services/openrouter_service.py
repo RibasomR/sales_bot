@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 import httpx
-import whisper
+from pywhispercpp.model import Model
 from loguru import logger
 
 from config import get_settings
@@ -24,7 +24,7 @@ DEEPSEEK_MODEL = "deepseek-v3.2"
 MAX_RETRIES = 3
 TIMEOUT_SECONDS = 30
 
-## Глобальная переменная для хранения загруженной модели Whisper
+## Global variable for storing loaded Whisper.cpp model
 _whisper_model = None
 
 
@@ -49,37 +49,42 @@ class ParsingError(AgentRouterError):
     pass
 
 
-## Load Whisper model (synchronous)
+## Load Whisper.cpp model (synchronous)
 def _load_whisper_model():
     """
-    Load Whisper model into memory (lazy loading).
+    Load Whisper.cpp model into memory (lazy loading).
     
     Model is loaded once on first call and kept in memory.
     Uses 'base' model as a compromise between speed and accuracy.
+    Whisper.cpp provides 2-4x better performance than openai-whisper.
     
-    :return: Loaded Whisper model
+    :return: Loaded Whisper.cpp model
     :raises TranscriptionError: If model loading fails
     """
     global _whisper_model
     
     if _whisper_model is None:
-        logger.info(f"Загружаю модель Whisper: {WHISPER_MODEL_NAME}")
+        logger.info(f"Загружаю модель Whisper.cpp: {WHISPER_MODEL_NAME}")
         try:
-            _whisper_model = whisper.load_model(WHISPER_MODEL_NAME)
-            logger.success(f"Модель Whisper '{WHISPER_MODEL_NAME}' успешно загружена")
+            _whisper_model = Model(
+                model=f"ggml-{WHISPER_MODEL_NAME}.bin",
+                n_threads=4
+            )
+            logger.success(f"Модель Whisper.cpp '{WHISPER_MODEL_NAME}' успешно загружена")
         except Exception as e:
-            logger.error(f"Ошибка загрузки модели Whisper: {e}")
-            raise TranscriptionError(f"Не удалось загрузить модель Whisper: {e}")
+            logger.error(f"Ошибка загрузки модели Whisper.cpp: {e}")
+            raise TranscriptionError(f"Не удалось загрузить модель Whisper.cpp: {e}")
     
     return _whisper_model
 
 
-## Transcribe audio to text via local Whisper
+## Transcribe audio to text via local Whisper.cpp
 async def transcribe_audio(audio_path: str) -> str:
     """
-    Transcribe audio file to text via local Whisper.
+    Transcribe audio file to text via local Whisper.cpp.
     
-    Uses locally installed Whisper model to convert speech to text.
+    Uses locally installed Whisper.cpp model to convert speech to text.
+    Provides 2-4x better performance compared to openai-whisper.
     Works completely offline, requires no API keys and is free.
     
     :param audio_path: Path to audio file
@@ -95,24 +100,24 @@ async def transcribe_audio(audio_path: str) -> str:
     if not Path(audio_path).exists():
         raise FileNotFoundError(f"Аудиофайл не найден: {audio_path}")
     
-    logger.info(f"Начинаю транскрипцию аудио: {audio_path}")
+    logger.info(f"Начинаю транскрипцию аудио через Whisper.cpp: {audio_path}")
     
     try:
         model = _load_whisper_model()
         
+        ## Transcribe with Whisper.cpp
         result = await asyncio.to_thread(
             model.transcribe,
             audio_path,
-            language="ru",
-            fp16=False
+            language="ru"
         )
         
-        text = result["text"].strip()
+        text = result.strip() if isinstance(result, str) else result.get("text", "").strip()
         
         if not text:
             raise TranscriptionError("Пустой результат транскрипции")
         
-        logger.success(f"Успешно транскрибировано: '{text[:100]}...'")
+        logger.success(f"Успешно транскрибировано через Whisper.cpp: '{text[:100]}...'")
         return text
         
     except FileNotFoundError:
@@ -120,7 +125,7 @@ async def transcribe_audio(audio_path: str) -> str:
     except TranscriptionError:
         raise
     except Exception as e:
-        logger.error(f"Ошибка при транскрипции: {e}")
+        logger.error(f"Ошибка при транскрипции через Whisper.cpp: {e}")
         raise TranscriptionError(f"Не удалось транскрибировать аудио: {e}")
 
 
