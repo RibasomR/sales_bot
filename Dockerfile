@@ -58,9 +58,9 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     LOG_LEVEL=INFO
 
-# Healthcheck
+# Healthcheck - verify bot connectivity to Telegram API
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)"
+    CMD python /app/healthcheck.py
 
 # Run the bot
 CMD ["python", "main.py"]

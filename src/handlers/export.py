@@ -7,7 +7,7 @@
 - Генерации и отправки Excel файла
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from aiogram import Router, F
@@ -109,7 +109,7 @@ async def handle_export_period(callback: CallbackQuery, state: FSMContext) -> No
     )
     
     # Определяем период
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = now
     period_name = ""
@@ -175,7 +175,9 @@ async def handle_export_period(callback: CallbackQuery, state: FSMContext) -> No
         cleanup_export_file(file_path)
         
     except Exception as e:
-        logger.error(f"❌ Ошибка при генерации экспорта для пользователя {user.id}: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"❌ Ошибка при генерации экспорта для пользователя {user.id}: {safe_error}")
         
         await callback.message.answer(
             "❌ <b>Ошибка при создании отчета</b>\n\n"

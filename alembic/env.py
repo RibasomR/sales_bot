@@ -30,16 +30,29 @@ def get_url():
     """
     Получить URL базы данных из переменных окружения.
     
+    Приоритет: сначала проверяет os.environ (Docker runtime),
+    затем загружает из .env файла (локальная разработка).
+    
     :return: URL подключения к PostgreSQL
+    :raises ValueError: Если DATABASE_URL не задан
     """
     import os
     from dotenv import load_dotenv
     
-    load_dotenv()
+    ## First check runtime environment variables (Docker Compose)
+    database_url = os.environ.get("DATABASE_URL")
     
-    database_url = os.getenv("DATABASE_URL")
+    ## If not found, try loading from .env file (local development)
     if not database_url:
-        database_url = "postgresql+asyncpg://user:pass@localhost/dbname"
+        load_dotenv()
+        database_url = os.getenv("DATABASE_URL")
+    
+    ## Fail fast if DATABASE_URL is not configured
+    if not database_url:
+        raise ValueError(
+            "DATABASE_URL is not set. Please configure it in .env file "
+            "or set as environment variable in Docker Compose."
+        )
     
     return database_url
 

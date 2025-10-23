@@ -10,7 +10,7 @@
 """
 
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -462,7 +462,7 @@ async def handle_period_filter(callback: CallbackQuery) -> None:
         last_name=callback.from_user.last_name,
     )
     
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_date = None
     end_date = now
     
@@ -692,56 +692,43 @@ async def process_edit_amount(message: Message, state: FSMContext) -> None:
     :param state: Контекст FSM
     :return: None
     """
-    amount_str = message.text.replace(",", ".").replace("₽", "").replace(" ", "")
+    from src.utils.validators import validate_amount
     
-    try:
-        amount = float(amount_str)
-        
-        if amount <= 0:
-            await message.answer(
-                "❌ Сумма должна быть положительной.\n\nВведите корректное число:",
-                reply_markup=get_cancel_keyboard()
-            )
-            return
-        
-        if amount > 10_000_000:
-            await message.answer(
-                "❌ Сумма слишком большая.\n\nВведите корректное число:",
-                reply_markup=get_cancel_keyboard()
-            )
-            return
-        
-        data = await state.get_data()
-        transaction_id = data["transaction_id"]
-        user_id = data["user_id"]
-        
-        # Обновляем транзакцию
-        transaction = await update_transaction(
-            transaction_id=transaction_id,
-            user_id=user_id,
-            amount=amount
-        )
-        
-        if transaction:
-            await message.answer(
-                f"✅ <b>Сумма обновлена</b>\n\n"
-                f"Новая сумма: <b>{float(transaction.amount):.2f} ₽</b>",
-                reply_markup=get_main_menu_keyboard()
-            )
-            logger.info(f"Сумма транзакции {transaction_id} обновлена на {amount}")
-        else:
-            await message.answer(
-                "❌ Ошибка при обновлении транзакции.",
-                reply_markup=get_main_menu_keyboard()
-            )
-        
-        await state.clear()
-        
-    except (ValueError, Exception):
+    ## Валидация суммы с использованием validators
+    is_valid, amount, error_msg = validate_amount(message.text)
+    
+    if not is_valid:
         await message.answer(
-            "❌ Некорректный формат суммы.\n\nВведите число:",
+            f"{error_msg}\n\nВведите корректное число:",
             reply_markup=get_cancel_keyboard()
         )
+        return
+    
+    data = await state.get_data()
+    transaction_id = data["transaction_id"]
+    user_id = data["user_id"]
+    
+    # Обновляем транзакцию
+    transaction = await update_transaction(
+        transaction_id=transaction_id,
+        user_id=user_id,
+        amount=amount
+    )
+    
+    if transaction:
+        await message.answer(
+            f"✅ <b>Сумма обновлена</b>\n\n"
+            f"Новая сумма: <b>{float(transaction.amount):.2f} ₽</b>",
+            reply_markup=get_main_menu_keyboard()
+        )
+        logger.info(f"Сумма транзакции {transaction_id} обновлена на {amount}")
+    else:
+        await message.answer(
+            "❌ Ошибка при обновлении транзакции.",
+            reply_markup=get_main_menu_keyboard()
+        )
+    
+    await state.clear()
 
 
 ## Выбор новой категории

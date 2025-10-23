@@ -28,17 +28,23 @@ class Settings(BaseSettings):
     :ivar rate_limit_period: Период для rate limit в секундах
     """
     
-    bot_token: str = Field(..., description="Токен Telegram бота")
-    agentrouter_api_key: str = Field(default="", description="API ключ AgentRouter (опционально)")
-    database_url: str = Field(..., description="URL базы данных PostgreSQL")
-    redis_url: str = Field(default="redis://localhost:6379/0", description="URL Redis")
+    bot_token: str = Field(..., validation_alias="BOT_TOKEN", description="Токен Telegram бота")
+    agentrouter_api_key: str = Field(default="", validation_alias="AGENTROUTER_API_KEY", description="API ключ AgentRouter (опционально)")
+    database_url: str = Field(..., validation_alias="DATABASE_URL", description="URL базы данных PostgreSQL")
+    redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL", description="URL Redis")
     
-    log_level: str = Field(default="INFO", description="Уровень логирования")
-    log_file: str = Field(default="logs/bot.log", description="Путь к файлу логов")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL", description="Уровень логирования")
+    log_file: str = Field(default="logs/bot.log", validation_alias="LOG_FILE", description="Путь к файлу логов")
     
-    max_transaction_amount: int = Field(default=1000000, description="Максимальная сумма транзакции")
-    rate_limit_requests: int = Field(default=30, description="Количество запросов в период")
-    rate_limit_period: int = Field(default=60, description="Период rate limit в секундах")
+    max_transaction_amount: int = Field(default=1000000, validation_alias="MAX_TRANSACTION_AMOUNT", description="Максимальная сумма транзакции")
+    rate_limit_requests: int = Field(default=30, validation_alias="RATE_LIMIT_REQUESTS", description="Количество запросов в период")
+    rate_limit_period: int = Field(default=60, validation_alias="RATE_LIMIT_PERIOD", description="Период rate limit в секундах")
+    
+    ## AgentRouter API retry and timeout settings
+    agentrouter_max_retries: int = Field(default=3, validation_alias="AGENTROUTER_MAX_RETRIES", description="Maximum number of retry attempts for AgentRouter API")
+    agentrouter_timeout: int = Field(default=10, validation_alias="AGENTROUTER_TIMEOUT", description="Timeout for single AgentRouter API request in seconds")
+    agentrouter_total_deadline: int = Field(default=25, validation_alias="AGENTROUTER_TOTAL_DEADLINE", description="Total deadline for all AgentRouter API attempts in seconds")
+    agentrouter_max_text_length: int = Field(default=1000, validation_alias="AGENTROUTER_MAX_TEXT_LENGTH", description="Maximum length of text to send to AgentRouter API")
     
     model_config = SettingsConfigDict(
         env_file=".env",

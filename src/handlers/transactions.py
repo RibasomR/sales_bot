@@ -125,7 +125,7 @@ async def handle_quick_add(message: Message, state: FSMContext, user_id: int, ar
     # Парсим сумму
     amount_str = parts[1].replace(",", ".").replace("₽", "").replace(" ", "")
     try:
-        amount = float(amount_str)
+        amount = Decimal(amount_str)
         if amount <= 0:
             raise ValueError("Сумма должна быть положительной")
     except (ValueError, InvalidOperation):
@@ -206,7 +206,7 @@ async def handle_quick_add(message: Message, state: FSMContext, user_id: int, ar
         response = (
             f"✅ <b>Транзакция добавлена</b>\n\n"
             f"{type_emoji} <b>{type_text}</b>\n"
-            f"💵 Сумма: <b>{sign}{amount:.2f} ₽</b>\n"
+            f"💵 Сумма: <b>{sign}{float(amount):.2f} ₽</b>\n"
             f"{category.emoji} Категория: <b>{category.name}</b>"
         )
         
@@ -216,7 +216,9 @@ async def handle_quick_add(message: Message, state: FSMContext, user_id: int, ar
         await message.answer(response)
         
     except Exception as e:
-        logger.error(f"Ошибка создания транзакции: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка создания транзакции: {safe_error}")
         await message.answer(
             "❌ Произошла ошибка при сохранении транзакции. Попробуйте еще раз."
         )
@@ -268,7 +270,7 @@ async def process_amount_input(message: Message, state: FSMContext) -> None:
     """
     from sqlalchemy import select
     from src.models import User, get_session
-    from datetime import datetime
+    from datetime import datetime, timezone
     from config import get_settings
     
     ## Валидация суммы с использованием validators
@@ -301,14 +303,14 @@ async def process_amount_input(message: Message, state: FSMContext) -> None:
                 if amount > transaction_limit:
                     warning_text = (
                         f"⚠️ <b>Внимание!</b>\n\n"
-                        f"Сумма {amount:,.0f}₽ превышает установленный лимит одной транзакции ({transaction_limit:,}₽).\n\n"
+                        f"Сумма {float(amount):,.0f}₽ превышает установленный лимит одной транзакции ({transaction_limit:,}₽).\n\n"
                         f"Ты уверен? Можешь продолжить или изменить сумму."
                     )
                     await message.answer(warning_text, parse_mode="HTML")
                 
                 if user.monthly_limit:
-                    now = datetime.now()
-                    start_month = datetime(now.year, now.month, 1)
+                    now = datetime.now(timezone.utc)
+                    start_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
                     from src.services.database import get_user_statistics
                     stats = await get_user_statistics(user.id, start_date=start_month)
                     
@@ -360,7 +362,7 @@ async def process_amount_input(message: Message, state: FSMContext) -> None:
     type_text = "расхода" if category_type == CategoryType.EXPENSE else "дохода"
     
     await message.answer(
-        f"{type_emoji} <b>Сумма: {amount:.2f} ₽</b>\n\n"
+        f"{type_emoji} <b>Сумма: {float(amount):.2f} ₽</b>\n\n"
         f"Выберите категорию {type_text}:",
         reply_markup=get_categories_keyboard(categories_list, data["transaction_type"])
     )
@@ -464,7 +466,9 @@ async def process_custom_category_input(message: Message, state: FSMContext) -> 
         )
         
     except Exception as e:
-        logger.error(f"Ошибка создания категории: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка создания категории: {safe_error}")
         await message.answer(
             "❌ Произошла ошибка при создании категории. Попробуйте еще раз.",
             reply_markup=get_cancel_keyboard()
@@ -543,7 +547,7 @@ async def show_confirmation(message: Message, state: FSMContext, edit: bool = Fa
     text = (
         f"📋 <b>Подтверждение транзакции</b>\n\n"
         f"{type_emoji} <b>{type_text}</b>\n"
-        f"💵 Сумма: <b>{sign}{amount:.2f} ₽</b>\n"
+        f"💵 Сумма: <b>{sign}{float(amount):.2f} ₽</b>\n"
         f"{category_emoji} Категория: <b>{category_name}</b>"
     )
     
@@ -597,14 +601,16 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext) -> No
         
         await callback.message.edit_text(
             f"✅ <b>Транзакция сохранена!</b>\n\n"
-            f"{type_emoji} {sign}{data['amount']:.2f} ₽\n"
+            f"{type_emoji} {sign}{float(data['amount']):.2f} ₽\n"
             f"{data['category_emoji']} {data['category_name']}"
         )
         
         await state.clear()
         
     except Exception as e:
-        logger.error(f"Ошибка сохранения транзакции: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка сохранения транзакции: {safe_error}")
         await callback.message.edit_text(
             "❌ Произошла ошибка при сохранении. Попробуйте еще раз."
         )

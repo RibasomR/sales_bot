@@ -1,4 +1,4 @@
-"""Initial migration with users, categories and transactions tables
+"""Initial complete migration with all tables, indexes and enum types
 
 Revision ID: 001
 Revises: 
@@ -19,10 +19,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Применение изменений к БД."""
+    """
+    Apply database changes.
     
-    ## Создание ENUM типов (только для PostgreSQL)
-    ## SQLite не поддерживает ENUM, использует VARCHAR
+    Creates all tables, enum types, indexes and constraints for the finance bot.
+    Includes timezone-aware timestamps and composite indexes for optimization.
+    """
+    
+    ## Create ENUM types (PostgreSQL only)
+    ## SQLite doesn't support ENUM, uses VARCHAR instead
     bind = op.get_bind()
     if bind.dialect.name == 'postgresql':
         # Check if types already exist before creating
@@ -41,7 +46,7 @@ def upgrade() -> None:
             END $$;
         """)
     
-    # Создание таблицы users
+    ## Create users table with all fields
     op.create_table(
         'users',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -49,16 +54,27 @@ def upgrade() -> None:
         sa.Column('username', sa.String(255), nullable=True),
         sa.Column('first_name', sa.String(255), nullable=False),
         sa.Column('last_name', sa.String(255), nullable=True),
-        sa.Column('max_transaction_limit', sa.Integer(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('max_transaction_limit', sa.Integer(), nullable=True, comment='Personal transaction limit (in rubles)'),
+        sa.Column('monthly_limit', sa.Integer(), nullable=True, comment='Monthly spending limit (in rubles)'),
+        sa.Column(
+            'created_at',
+            sa.TIMESTAMP(timezone=True) if bind.dialect.name == 'postgresql' else sa.DateTime(),
+            server_default=sa.text('CURRENT_TIMESTAMP'),
+            nullable=False
+        ),
+        sa.Column(
+            'updated_at',
+            sa.TIMESTAMP(timezone=True) if bind.dialect.name == 'postgresql' else sa.DateTime(),
+            server_default=sa.text('CURRENT_TIMESTAMP'),
+            nullable=False
+        ),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_users')),
         sa.UniqueConstraint('telegram_id', name=op.f('uq_users_telegram_id')),
-        comment='Пользователи бота'
+        comment='Bot users'
     )
-    op.create_index(op.f('ix_telegram_id'), 'users', ['telegram_id'], unique=False)
+    op.create_index(op.f('ix_users_telegram_id'), 'users', ['telegram_id'], unique=False)
     
-    # Создание таблицы categories
+    ## Create categories table
     op.create_table(
         'categories',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -67,17 +83,35 @@ def upgrade() -> None:
         sa.Column('emoji', sa.String(10), nullable=False, server_default='📝'),
         sa.Column('is_default', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('user_id', sa.Integer(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column(
+            'created_at',
+            sa.TIMESTAMP(timezone=True) if bind.dialect.name == 'postgresql' else sa.DateTime(),
+            server_default=sa.text('CURRENT_TIMESTAMP'),
+            nullable=False
+        ),
+        sa.Column(
+            'updated_at',
+            sa.TIMESTAMP(timezone=True) if bind.dialect.name == 'postgresql' else sa.DateTime(),
+            server_default=sa.text('CURRENT_TIMESTAMP'),
+            nullable=False
+        ),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_categories_user_id_users'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_categories')),
-        comment='Категории доходов и расходов'
+        comment='Income and expense categories'
     )
-    op.create_index(op.f('ix_type'), 'categories', ['type'], unique=False)
-    op.create_index(op.f('ix_is_default'), 'categories', ['is_default'], unique=False)
-    op.create_index(op.f('ix_user_id'), 'categories', ['user_id'], unique=False)
+    op.create_index(op.f('ix_categories_type'), 'categories', ['type'], unique=False)
+    op.create_index(op.f('ix_categories_is_default'), 'categories', ['is_default'], unique=False)
+    op.create_index(op.f('ix_categories_user_id'), 'categories', ['user_id'], unique=False)
     
-    # Создание таблицы transactions
+    ## Composite index for category filtering by user and type
+    op.create_index(
+        'ix_categories_user_type',
+        'categories',
+        ['user_id', 'type'],
+        unique=False
+    )
+    
+    ## Create transactions table
     op.create_table(
         'transactions',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -86,40 +120,86 @@ def upgrade() -> None:
         sa.Column('amount', sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column('category_id', sa.Integer(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column(
+            'created_at',
+            sa.TIMESTAMP(timezone=True) if bind.dialect.name == 'postgresql' else sa.DateTime(),
+            server_default=sa.text('CURRENT_TIMESTAMP'),
+            nullable=False
+        ),
+        sa.Column(
+            'updated_at',
+            sa.TIMESTAMP(timezone=True) if bind.dialect.name == 'postgresql' else sa.DateTime(),
+            server_default=sa.text('CURRENT_TIMESTAMP'),
+            nullable=False
+        ),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_transactions_user_id_users'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['category_id'], ['categories.id'], name=op.f('fk_transactions_category_id_categories'), ondelete='RESTRICT'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_transactions')),
-        comment='Финансовые транзакции пользователей'
+        comment='User financial transactions'
     )
+    
+    ## Single column indexes
     op.create_index(op.f('ix_transactions_user_id'), 'transactions', ['user_id'], unique=False)
     op.create_index(op.f('ix_transactions_type'), 'transactions', ['type'], unique=False)
     op.create_index(op.f('ix_transactions_category_id'), 'transactions', ['category_id'], unique=False)
     op.create_index(op.f('ix_transactions_created_at'), 'transactions', ['created_at'], unique=False)
+    
+    ## Composite indexes for optimization
+    ## Filter transactions by user and type
+    op.create_index(
+        'ix_transactions_user_type',
+        'transactions',
+        ['user_id', 'type'],
+        unique=False
+    )
+    
+    ## Filter transactions by user and date
+    op.create_index(
+        'ix_transactions_user_created',
+        'transactions',
+        ['user_id', 'created_at'],
+        unique=False
+    )
+    
+    ## Category statistics for period
+    op.create_index(
+        'ix_transactions_category_created',
+        'transactions',
+        ['category_id', 'created_at'],
+        unique=False
+    )
 
 
 def downgrade() -> None:
-    """Откат изменений в БД."""
+    """
+    Rollback database changes.
     
-    # Удаление таблиц в обратном порядке
+    Drops all tables, indexes and enum types in reverse order.
+    """
+    
+    ## Drop transactions table with all indexes
+    op.drop_index('ix_transactions_category_created', table_name='transactions')
+    op.drop_index('ix_transactions_user_created', table_name='transactions')
+    op.drop_index('ix_transactions_user_type', table_name='transactions')
     op.drop_index(op.f('ix_transactions_created_at'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_category_id'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_type'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_user_id'), table_name='transactions')
     op.drop_table('transactions')
     
-    op.drop_index(op.f('ix_user_id'), table_name='categories')
-    op.drop_index(op.f('ix_is_default'), table_name='categories')
-    op.drop_index(op.f('ix_type'), table_name='categories')
+    ## Drop categories table with all indexes
+    op.drop_index('ix_categories_user_type', table_name='categories')
+    op.drop_index(op.f('ix_categories_user_id'), table_name='categories')
+    op.drop_index(op.f('ix_categories_is_default'), table_name='categories')
+    op.drop_index(op.f('ix_categories_type'), table_name='categories')
     op.drop_table('categories')
     
-    op.drop_index(op.f('ix_telegram_id'), table_name='users')
+    ## Drop users table with all indexes
+    op.drop_index(op.f('ix_users_telegram_id'), table_name='users')
     op.drop_table('users')
     
-    ## Удаление ENUM типов (только для PostgreSQL)
+    ## Drop ENUM types (PostgreSQL only)
     bind = op.get_bind()
     if bind.dialect.name == 'postgresql':
-        op.execute('DROP TYPE transaction_type')
-        op.execute('DROP TYPE category_type')
-
+        op.execute('DROP TYPE IF EXISTS transaction_type')
+        op.execute('DROP TYPE IF EXISTS category_type')

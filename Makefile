@@ -40,9 +40,6 @@ logs: ## Показать логи всех сервисов
 logs-bot: ## Показать логи бота
 	docker-compose logs -f bot
 
-logs-whisper: ## Показать логи Whisper
-	docker-compose logs -f whisper
-
 logs-db: ## Показать логи PostgreSQL
 	docker-compose logs -f postgres
 
@@ -105,14 +102,12 @@ health: ## Проверить здоровье всех сервисов
 	@docker-compose exec postgres pg_isready -U finance_user || echo "$(RED)❌ PostgreSQL недоступен$(NC)"
 	@echo "\n$(YELLOW)Redis:$(NC)"
 	@docker-compose exec redis redis-cli -a $$(grep REDIS_PASSWORD .env | cut -d '=' -f2) ping || echo "$(RED)❌ Redis недоступен$(NC)"
-	@echo "\n$(YELLOW)Whisper API:$(NC)"
-	@curl -s http://localhost:8000/health || echo "$(RED)❌ Whisper API недоступен$(NC)"
 	@echo "\n"
 
 install: ## Первоначальная установка (копирование .env, сборка, запуск)
 	@echo "$(GREEN)📦 Первоначальная установка...$(NC)"
 	@if [ ! -f .env ]; then \
-		cp .env.docker .env; \
+		cp env.example .env; \
 		echo "$(YELLOW)⚠️  Скопирован .env файл. ОБЯЗАТЕЛЬНО отредактируйте его!$(NC)"; \
 		echo "$(YELLOW)⚠️  Измените BOT_TOKEN, пароли и другие параметры$(NC)"; \
 		exit 1; \

@@ -375,7 +375,7 @@ async def count_category_transactions(category_id: int, user_id: int) -> int:
 async def create_transaction(
     user_id: int,
     transaction_type: TransactionType,
-    amount: float,
+    amount: Decimal,
     category_id: int,
     description: Optional[str] = None
 ) -> Transaction:
@@ -386,7 +386,7 @@ async def create_transaction(
     
     :param user_id: ID пользователя
     :param transaction_type: Тип транзакции (доход/расход)
-    :param amount: Сумма транзакции
+    :param amount: Сумма транзакции (Decimal для точности)
     :param category_id: ID категории
     :param description: Описание транзакции (опционально)
     :return: Созданная транзакция
@@ -395,7 +395,7 @@ async def create_transaction(
         >>> transaction = await create_transaction(
         ...     user_id=1,
         ...     transaction_type=TransactionType.EXPENSE,
-        ...     amount=500.0,
+        ...     amount=Decimal('500.00'),
         ...     category_id=1,
         ...     description="Покупка продуктов"
         ... )
@@ -738,14 +738,14 @@ async def update_transaction(
     
     :param transaction_id: ID транзакции
     :param user_id: ID пользователя (для проверки прав)
-    :param kwargs: Поля для обновления (amount, category_id, description)
+    :param kwargs: Поля для обновления (amount as Decimal, category_id, description)
     :return: Обновленная транзакция или None
     
     Example:
         >>> transaction = await update_transaction(
         ...     transaction_id=123,
         ...     user_id=1,
-        ...     amount=1000.0,
+        ...     amount=Decimal('1000.00'),
         ...     description="Обновленное описание"
         ... )
     """

@@ -7,8 +7,10 @@
 
 import re
 import html
-from typing import Optional
+import time
+from typing import Optional, Protocol
 from decimal import Decimal, InvalidOperation
+from abc import ABC, abstractmethod
 
 ## Защита от XSS: очистка HTML-тегов
 def sanitize_text(text: str, max_length: Optional[int] = None) -> str:
@@ -43,18 +45,18 @@ def sanitize_text(text: str, max_length: Optional[int] = None) -> str:
 
 
 ## Валидация суммы транзакции
-def validate_amount(amount_str: str) -> tuple[bool, Optional[float], Optional[str]]:
+def validate_amount(amount_str: str) -> tuple[bool, Optional[Decimal], Optional[str]]:
     """
     Валидировать строку суммы транзакции.
     
     Проверяет, что сумма является положительным числом в допустимых пределах.
     
     :param amount_str: Строка с суммой
-    :return: Кортеж (валидна, сумма, сообщение об ошибке)
+    :return: Кортеж (валидна, сумма как Decimal, сообщение об ошибке)
     
     Example:
         >>> validate_amount("500")
-        (True, 500.0, None)
+        (True, Decimal('500'), None)
         >>> validate_amount("-100")
         (False, None, "Сумма должна быть положительной")
     """
@@ -66,7 +68,7 @@ def validate_amount(amount_str: str) -> tuple[bool, Optional[float], Optional[st
         if not re.match(r'^\d+(\.\d{1,2})?$', cleaned):
             return False, None, "❌ Некорректный формат суммы. Используйте только цифры и точку."
         
-        amount = float(cleaned)
+        amount = Decimal(cleaned)
         
         if amount <= 0:
             return False, None, "❌ Сумма должна быть положительной."
@@ -75,8 +77,7 @@ def validate_amount(amount_str: str) -> tuple[bool, Optional[float], Optional[st
             return False, None, "❌ Сумма слишком большая (максимум 10 000 000)."
         
         # Проверяем количество знаков после запятой
-        decimal_amount = Decimal(cleaned)
-        if decimal_amount.as_tuple().exponent < -2:
+        if amount.as_tuple().exponent < -2:
             return False, None, "❌ Слишком много знаков после запятой (максимум 2)."
         
         return True, amount, None
@@ -172,60 +173,192 @@ def validate_emoji(emoji: str) -> tuple[bool, Optional[str]]:
     return True, None
 
 
-## Проверка лимита запросов (simple rate limiting)
-class RateLimiter:
+## Rate limiter backend interface
+class RateLimiterBackend(ABC):
     """
-    Простой rate limiter для ограничения частоты запросов.
+    Abstract base class for rate limiter storage backends.
     
-    Использует словарь в памяти для отслеживания количества запросов.
-    Для продакшена лучше использовать Redis.
+    Defines the interface for different storage implementations
+    (in-memory, Redis, etc.).
+    """
+    
+    @abstractmethod
+    async def check_rate_limit(
+        self,
+        user_id: int,
+        max_requests: int,
+        time_window: int
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Check rate limit for a user.
+        
+        :param user_id: User ID
+        :param max_requests: Maximum number of requests allowed
+        :param time_window: Time window in seconds
+        :return: Tuple (allowed, error_message)
+        """
+        pass
+
+
+## In-memory rate limiter backend (fallback for development)
+class InMemoryRateLimiterBackend(RateLimiterBackend):
+    """
+    In-memory rate limiter backend.
+    
+    Stores request timestamps in memory. Not suitable for production
+    with multiple processes, but works as a development fallback.
     """
     
     def __init__(self):
-        """Инициализация rate limiter."""
+        """Initialize in-memory storage."""
         self._requests: dict[int, list[float]] = {}
     
-    def check_rate_limit(
+    async def check_rate_limit(
+        self,
+        user_id: int,
+        max_requests: int,
+        time_window: int
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Check rate limit using in-memory storage.
+        
+        :param user_id: User ID
+        :param max_requests: Maximum number of requests allowed
+        :param time_window: Time window in seconds
+        :return: Tuple (allowed, error_message)
+        """
+        current_time = time.time()
+        
+        if user_id not in self._requests:
+            self._requests[user_id] = []
+        
+        # Remove old requests outside time window
+        self._requests[user_id] = [
+            req_time for req_time in self._requests[user_id]
+            if current_time - req_time < time_window
+        ]
+        
+        # Check if limit exceeded
+        if len(self._requests[user_id]) >= max_requests:
+            return False, f"⏱ Слишком много запросов. Попробуйте через {time_window} секунд."
+        
+        # Add current request
+        self._requests[user_id].append(current_time)
+        
+        return True, None
+
+
+## Redis rate limiter backend (production-ready)
+class RedisRateLimiterBackend(RateLimiterBackend):
+    """
+    Redis-based rate limiter backend.
+    
+    Uses Redis INCR and EXPIRE commands for distributed rate limiting.
+    Suitable for production with multiple processes/instances.
+    """
+    
+    def __init__(self, redis_client):
+        """
+        Initialize Redis backend.
+        
+        :param redis_client: Redis client instance (aioredis or redis.asyncio)
+        """
+        self._redis = redis_client
+    
+    async def check_rate_limit(
+        self,
+        user_id: int,
+        max_requests: int,
+        time_window: int
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Check rate limit using Redis storage.
+        
+        Uses Redis INCR to atomically increment counter and EXPIRE
+        to set TTL on the key. This ensures accurate rate limiting
+        across multiple processes/instances.
+        
+        :param user_id: User ID
+        :param max_requests: Maximum number of requests allowed
+        :param time_window: Time window in seconds
+        :return: Tuple (allowed, error_message)
+        """
+        key = f"rate_limit:user:{user_id}"
+        
+        try:
+            # Increment counter atomically
+            current_count = await self._redis.incr(key)
+            
+            # Set expiration on first request in window
+            if current_count == 1:
+                await self._redis.expire(key, time_window)
+            
+            # Check if limit exceeded
+            if current_count > max_requests:
+                # Get TTL to show user when they can retry
+                ttl = await self._redis.ttl(key)
+                if ttl > 0:
+                    return False, f"⏱ Слишком много запросов. Попробуйте через {ttl} секунд."
+                return False, f"⏱ Слишком много запросов. Попробуйте через {time_window} секунд."
+            
+            return True, None
+            
+        except Exception as e:
+            # On Redis error, allow request but log the issue
+            # This prevents Redis failures from blocking the bot
+            from loguru import logger
+            logger.error(f"Redis rate limit error: {e}")
+            return True, None
+
+
+## Rate limiter with pluggable backend
+class RateLimiter:
+    """
+    Rate limiter with pluggable storage backend.
+    
+    Supports both in-memory (development) and Redis (production) backends.
+    Automatically falls back to in-memory if Redis is unavailable.
+    """
+    
+    def __init__(self, backend: RateLimiterBackend):
+        """
+        Initialize rate limiter with specific backend.
+        
+        :param backend: Storage backend implementation
+        """
+        self._backend = backend
+    
+    async def check_rate_limit(
         self,
         user_id: int,
         max_requests: int = 10,
         time_window: int = 60
     ) -> tuple[bool, Optional[str]]:
         """
-        Проверить лимит запросов для пользователя.
+        Check rate limit for a user.
         
-        :param user_id: ID пользователя
-        :param max_requests: Максимальное количество запросов
-        :param time_window: Временное окно в секундах
-        :return: Кортеж (разрешено, сообщение об ошибке)
+        :param user_id: User ID
+        :param max_requests: Maximum number of requests allowed
+        :param time_window: Time window in seconds
+        :return: Tuple (allowed, error_message)
         
         Example:
-            >>> limiter = RateLimiter()
-            >>> allowed, error = limiter.check_rate_limit(user_id=123)
+            >>> limiter = RateLimiter(InMemoryRateLimiterBackend())
+            >>> allowed, error = await limiter.check_rate_limit(user_id=123)
         """
-        import time
-        
-        current_time = time.time()
-        
-        if user_id not in self._requests:
-            self._requests[user_id] = []
-        
-        # Удаляем старые запросы
-        self._requests[user_id] = [
-            req_time for req_time in self._requests[user_id]
-            if current_time - req_time < time_window
-        ]
-        
-        # Проверяем лимит
-        if len(self._requests[user_id]) >= max_requests:
-            return False, f"⏱ Слишком много запросов. Попробуйте через {time_window} секунд."
-        
-        # Добавляем текущий запрос
-        self._requests[user_id].append(current_time)
-        
-        return True, None
+        return await self._backend.check_rate_limit(user_id, max_requests, time_window)
 
 
-## Глобальный экземпляр rate limiter
-rate_limiter = RateLimiter()
+## Global rate limiter instance (will be initialized in main.py)
+rate_limiter: Optional[RateLimiter] = None
+
+
+def initialize_rate_limiter(backend: RateLimiterBackend) -> None:
+    """
+    Initialize global rate limiter instance with specific backend.
+    
+    :param backend: Storage backend to use
+    """
+    global rate_limiter
+    rate_limiter = RateLimiter(backend)
 

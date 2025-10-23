@@ -1,5 +1,5 @@
 ## Docker Compose конфигурация для Telegram-бота учета финансов
-## Включает: PostgreSQL, Redis, Whisper API, основное приложение бота
+## Включает: PostgreSQL, Redis, основное приложение бота с встроенным Whisper.cpp
 
 version: '3.8'
 
@@ -44,24 +44,7 @@ services:
       timeout: 5s
       retries: 5
 
-  ## Whisper.cpp API сервер для транскрибации голоса (2-4x faster than openai-whisper)
-  whisper:
-    build:
-      context: .
-      dockerfile: Dockerfile.whisper
-    container_name: finance_bot_whisper
-    restart: unless-stopped
-    environment:
-      WHISPER_MODEL: ${WHISPER_MODEL:-base}
-      WHISPER_THREADS: ${WHISPER_THREADS:-4}
-    volumes:
-      - whisper_cache:/root/.cache/whisper.cpp
-    ports:
-      - "${WHISPER_PORT:-8000}:8000"
-    networks:
-      - finance_bot_network
-
-  ## Основное приложение Telegram-бота
+  ## Основное приложение Telegram-бота с встроенным Whisper.cpp
   bot:
     build:
       context: .
@@ -71,26 +54,32 @@ services:
     env_file:
       - .env
     environment:
+      # Bot Configuration
+      BOT_TOKEN: ${BOT_TOKEN}
+      AGENTROUTER_API_KEY: ${AGENTROUTER_API_KEY}
+      
       # Database
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-finance_user}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-finance_bot}
       
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/0
       
-      # Whisper API
-      WHISPER_API_URL: http://whisper:8000
-      
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE: ${LOG_FILE:-logs/bot.log}
+      
+      # Application Settings
+      MAX_TRANSACTION_AMOUNT: ${MAX_TRANSACTION_AMOUNT:-10000000}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-30}
+      RATE_LIMIT_PERIOD: ${RATE_LIMIT_PERIOD:-60}
     volumes:
       - ./logs:/app/logs
+      - whisper_cache:/root/.cache/whisper.cpp
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      whisper:
-        condition: service_started
     networks:
       - finance_bot_network
     command: >

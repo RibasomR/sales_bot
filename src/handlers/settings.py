@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from loguru import logger
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models import get_session, User
 from src.services.database import get_or_create_user, get_user_statistics
@@ -119,8 +119,8 @@ async def view_limits(callback: CallbackQuery) -> None:
         if user.monthly_limit:
             text += f"└ {user.monthly_limit:,}₽\n\n"
             
-            now = datetime.now()
-            start_month = datetime(now.year, now.month, 1)
+            now = datetime.now(timezone.utc)
+            start_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
             stats = await get_user_statistics(user.id, start_date=start_month)
             
             spent = float(stats['total_expense'])

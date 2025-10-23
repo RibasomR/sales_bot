@@ -53,48 +53,64 @@ class ErrorHandlerMiddleware(BaseMiddleware):
             return await handler(event, data)
             
         except TelegramUnauthorizedError as e:
-            logger.critical(f"🚨 Telegram Unauthorized: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.critical(f"🚨 Telegram Unauthorized: {safe_error}")
             await self._send_error_message(
                 event,
                 "❌ Ошибка авторизации бота. Свяжись с администратором."
             )
             
         except TelegramForbiddenError as e:
-            logger.warning(f"⚠️ Telegram Forbidden: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.warning(f"⚠️ Telegram Forbidden: {safe_error}")
             
         except TelegramBadRequest as e:
-            logger.error(f"❌ Telegram BadRequest: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"❌ Telegram BadRequest: {safe_error}")
             await self._send_error_message(
                 event,
                 "❌ Некорректный запрос. Попробуй еще раз."
             )
             
         except TelegramNotFound as e:
-            logger.warning(f"⚠️ Telegram NotFound: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.warning(f"⚠️ Telegram NotFound: {safe_error}")
             
         except TelegramAPIError as e:
-            logger.error(f"❌ Telegram API Error: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"❌ Telegram API Error: {safe_error}")
             await self._send_error_message(
                 event,
                 "❌ Ошибка связи с Telegram. Попробуй позже."
             )
             
         except SQLAlchemyError as e:
-            logger.error(f"🗄️ Database Error: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"🗄️ Database Error: {safe_error}")
             await self._send_error_message(
                 event,
                 "❌ Ошибка базы данных. Попробуй позже или обратись к администратору."
             )
             
         except ValueError as e:
-            logger.warning(f"⚠️ ValueError: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.warning(f"⚠️ ValueError: {safe_error}")
             await self._send_error_message(
                 event,
                 f"❌ Некорректные данные: {str(e)}"
             )
             
         except Exception as e:
-            logger.exception(f"💥 Необработанное исключение: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.exception(f"💥 Необработанное исключение: {safe_error}")
             await self._send_error_message(
                 event,
                 "❌ Произошла непредвиденная ошибка. Попробуй позже."
@@ -125,7 +141,9 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                 else:
                     await event.callback_query.answer(text, show_alert=True)
         except Exception as e:
-            logger.error(f"❌ Не удалось отправить сообщение об ошибке: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"❌ Не удалось отправить сообщение об ошибке: {safe_error}")
 
 
 ## Функция-fallback для недоступности БД
@@ -147,7 +165,9 @@ async def database_fallback_message(event: Update) -> None:
         elif event.callback_query:
             await event.callback_query.answer(text, show_alert=True)
     except Exception as e:
-        logger.error(f"❌ Не удалось отправить fallback сообщение: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"❌ Не удалось отправить fallback сообщение: {safe_error}")
 
 
 ## Fallback function for AgentRouter API unavailability
@@ -169,5 +189,7 @@ async def api_fallback_message(event: Update) -> None:
         elif event.callback_query:
             await event.callback_query.answer(text, show_alert=True)
     except Exception as e:
-        logger.error(f"❌ Не удалось отправить fallback сообщение: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"❌ Не удалось отправить fallback сообщение: {safe_error}")
 

@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, DateTime
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -46,16 +46,18 @@ class TimestampMixin:
     """
     Миксин для автоматического добавления временных меток создания и обновления.
     
-    :ivar created_at: Дата и время создания записи
-    :ivar updated_at: Дата и время последнего обновления записи
+    :ivar created_at: Дата и время создания записи (timezone-aware UTC)
+    :ivar updated_at: Дата и время последнего обновления записи (timezone-aware UTC)
     """
     
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
         comment="Дата и время создания записи"
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,

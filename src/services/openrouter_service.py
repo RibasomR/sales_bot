@@ -7,8 +7,11 @@ and parsing of transaction text via AgentRouter API (DeepSeek V3.2).
 
 import asyncio
 import json
+import random
+import time
 from typing import Optional, Dict, Any
 from pathlib import Path
+from decimal import Decimal, InvalidOperation
 
 import httpx
 from pywhispercpp.model import Model
@@ -21,8 +24,6 @@ from config import get_settings
 WHISPER_MODEL_NAME = "base"
 AGENTROUTER_BASE_URL = "https://agentrouter.org/v1"
 DEEPSEEK_MODEL = "deepseek-v3.2"
-MAX_RETRIES = 3
-TIMEOUT_SECONDS = 30
 
 ## Global variable for storing loaded Whisper.cpp model
 _whisper_model = None
@@ -72,8 +73,10 @@ def _load_whisper_model():
             )
             logger.success(f"Модель Whisper.cpp '{WHISPER_MODEL_NAME}' успешно загружена")
         except Exception as e:
-            logger.error(f"Ошибка загрузки модели Whisper.cpp: {e}")
-            raise TranscriptionError(f"Не удалось загрузить модель Whisper.cpp: {e}")
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"Ошибка загрузки модели Whisper.cpp: {safe_error}")
+            raise TranscriptionError(f"Не удалось загрузить модель Whisper.cpp: {safe_error}")
     
     return _whisper_model
 
@@ -125,8 +128,33 @@ async def transcribe_audio(audio_path: str) -> str:
     except TranscriptionError:
         raise
     except Exception as e:
-        logger.error(f"Ошибка при транскрипции через Whisper.cpp: {e}")
-        raise TranscriptionError(f"Не удалось транскрибировать аудио: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка при транскрипции через Whisper.cpp: {safe_error}")
+        raise TranscriptionError(f"Не удалось транскрибировать аудио: {safe_error}")
+
+
+## Calculate exponential backoff delay with jitter
+def _calculate_backoff_delay(attempt: int, base_delay: float = 0.5, jitter_percent: float = 0.2) -> float:
+    """
+    Calculate exponential backoff delay with jitter.
+    
+    Uses formula: base_delay * (2 ^ attempt) ± jitter_percent
+    Example delays: 0.5s, 1s, 2s with ±20% jitter
+    
+    :param attempt: Current attempt number (0-based)
+    :param base_delay: Base delay in seconds
+    :param jitter_percent: Jitter percentage (0.0-1.0)
+    :return: Delay in seconds with jitter applied
+    
+    Example:
+        >>> delay = _calculate_backoff_delay(0)  # ~0.4-0.6s
+        >>> delay = _calculate_backoff_delay(1)  # ~0.8-1.2s
+        >>> delay = _calculate_backoff_delay(2)  # ~1.6-2.4s
+    """
+    exponential_delay = base_delay * (2 ** attempt)
+    jitter = exponential_delay * jitter_percent * (2 * random.random() - 1)
+    return exponential_delay + jitter
 
 
 ## Parse transaction text via AgentRouter API
@@ -140,7 +168,9 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     - Category
     - Description
     
-    :param text: Text to parse
+    Uses exponential backoff with jitter for retries and enforces total deadline.
+    
+    :param text: Text to parse (will be truncated to max_text_length)
     :return: Dictionary with recognized data or None on error
     :raises ParsingError: On critical parsing error
     
@@ -149,7 +179,7 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
         >>> print(data)
         {
             "type": "expense",
-            "amount": 500.0,
+            "amount": Decimal('500'),
             "category": "Продукты",
             "description": None
         }
@@ -157,9 +187,14 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     if not text or not text.strip():
         raise ParsingError("Текст для парсинга пустой")
     
-    logger.info(f"Парсинг текста транзакции через AgentRouter: '{text[:50]}...'")
-    
     settings = get_settings()
+    
+    ## Truncate text to maximum allowed length
+    if len(text) > settings.agentrouter_max_text_length:
+        logger.warning(f"Text truncated from {len(text)} to {settings.agentrouter_max_text_length} characters")
+        text = text[:settings.agentrouter_max_text_length]
+    
+    logger.info(f"Парсинг текста транзакции через AgentRouter: '{text[:50]}...'")
     
     if not settings.agentrouter_api_key:
         raise ParsingError(
@@ -167,6 +202,11 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
             "Добавьте AGENTROUTER_API_KEY в .env файл. "
             "Получить ключ: https://agentrouter.org/console/token"
         )
+    
+    from src.utils.sanitizer import sanitize_headers, mask_sensitive_value
+    
+    # Mask API key for logging
+    safe_api_key = mask_sensitive_value(settings.agentrouter_api_key, visible_chars=4)
     
     ## Prompt for parsing transaction via LLM
     prompt = """Проанализируй текст и извлеки информацию о финансовой транзакции.
@@ -201,9 +241,26 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
         "max_tokens": 500
     }
     
-    for attempt in range(MAX_RETRIES):
+    ## Track total time spent for deadline enforcement
+    start_time = time.monotonic()
+    last_error = None
+    
+    for attempt in range(settings.agentrouter_max_retries):
+        ## Check if we exceeded total deadline
+        elapsed = time.monotonic() - start_time
+        if elapsed >= settings.agentrouter_total_deadline:
+            logger.error(f"Total deadline exceeded: {elapsed:.2f}s >= {settings.agentrouter_total_deadline}s")
+            raise ParsingError(
+                f"AgentRouter API не ответил за отведенное время ({settings.agentrouter_total_deadline}s). "
+                "Попробуйте позже."
+            )
+        
+        ## Calculate remaining time for this attempt
+        remaining_time = settings.agentrouter_total_deadline - elapsed
+        attempt_timeout = min(settings.agentrouter_timeout, remaining_time)
+        
         try:
-            async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
+            async with httpx.AsyncClient(timeout=attempt_timeout) as client:
                 response = await client.post(
                     f"{AGENTROUTER_BASE_URL}/chat/completions",
                     headers=headers,
@@ -211,11 +268,17 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
                 )
                 
                 if response.status_code != 200:
-                    logger.error(f"AgentRouter API ошибка {response.status_code}: {response.text}")
-                    if attempt < MAX_RETRIES - 1:
-                        await asyncio.sleep(1)
+                    # Sanitize response for logging (may contain sensitive data)
+                    safe_response = response.text[:200] if len(response.text) > 200 else response.text
+                    logger.error(f"AgentRouter API ошибка {response.status_code}: {safe_response}")
+                    last_error = ParsingError(f"AgentRouter API вернул ошибку: {response.status_code}")
+                    
+                    if attempt < settings.agentrouter_max_retries - 1:
+                        delay = _calculate_backoff_delay(attempt)
+                        logger.info(f"Повтор через {delay:.2f}s (попытка {attempt + 1}/{settings.agentrouter_max_retries})")
+                        await asyncio.sleep(delay)
                         continue
-                    raise ParsingError(f"AgentRouter API вернул ошибку: {response.status_code}")
+                    raise last_error
                 
                 result = response.json()
                 content = result["choices"][0]["message"]["content"].strip()
@@ -232,43 +295,74 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
                 if not transaction_data.get("type") in ["income", "expense"]:
                     raise ParsingError("Некорректный тип транзакции")
                 
-                if not transaction_data.get("amount") or transaction_data["amount"] <= 0:
+                ## Convert amount to Decimal for precision
+                try:
+                    amount = Decimal(str(transaction_data.get("amount", 0)))
+                except (ValueError, InvalidOperation):
+                    raise ParsingError("Некорректный формат суммы")
+                
+                if amount <= 0:
                     raise ParsingError("Некорректная сумма транзакции")
                 
-                if transaction_data["amount"] > 10_000_000:
+                if amount > 10_000_000:
                     raise ParsingError("Сумма слишком большая (максимум 10 000 000)")
+                
+                ## Replace amount with Decimal
+                transaction_data["amount"] = amount
                 
                 logger.success(f"Успешно распознано через AgentRouter: {transaction_data}")
                 return transaction_data
                 
         except httpx.TimeoutException:
-            logger.warning(f"Timeout при запросе к AgentRouter (попытка {attempt + 1}/{MAX_RETRIES})")
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(2)
-                continue
-            raise ParsingError(
+            logger.warning(f"Timeout при запросе к AgentRouter (попытка {attempt + 1}/{settings.agentrouter_max_retries})")
+            last_error = ParsingError(
                 "AgentRouter API недоступен (timeout). "
                 "Проверьте интернет соединение и попробуйте позже."
             )
             
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Ошибка парсинга ответа от AgentRouter: {e}")
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(1)
+            if attempt < settings.agentrouter_max_retries - 1:
+                delay = _calculate_backoff_delay(attempt)
+                logger.info(f"Повтор через {delay:.2f}s")
+                await asyncio.sleep(delay)
                 continue
-            raise ParsingError(
+            raise last_error
+            
+        except (json.JSONDecodeError, KeyError) as e:
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"Ошибка парсинга ответа от AgentRouter: {safe_error}")
+            last_error = ParsingError(
                 "Не удалось обработать ответ от AgentRouter API. "
                 "Попробуйте еще раз или обратитесь к администратору."
             )
             
-        except Exception as e:
-            logger.error(f"Неожиданная ошибка при запросе к AgentRouter: {e}")
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(2)
+            if attempt < settings.agentrouter_max_retries - 1:
+                delay = _calculate_backoff_delay(attempt)
+                logger.info(f"Повтор через {delay:.2f}s")
+                await asyncio.sleep(delay)
                 continue
-            raise ParsingError(
-                f"Ошибка при обращении к AgentRouter API: {str(e)}"
-            )
+            raise last_error
+            
+        except ParsingError:
+            ## Re-raise parsing errors without retry
+            raise
+            
+        except Exception as e:
+            from src.utils.sanitizer import sanitize_exception_message
+            safe_error = sanitize_exception_message(e)
+            logger.error(f"Неожиданная ошибка при запросе к AgentRouter: {safe_error}")
+            last_error = ParsingError(f"Ошибка при обращении к AgentRouter API: {safe_error}")
+            
+            if attempt < settings.agentrouter_max_retries - 1:
+                delay = _calculate_backoff_delay(attempt)
+                logger.info(f"Повтор через {delay:.2f}s")
+                await asyncio.sleep(delay)
+                continue
+            raise last_error
+    
+    ## If we exhausted all retries, raise the last error
+    if last_error:
+        raise last_error
     
     raise ParsingError(
         "Все попытки обращения к AgentRouter API провалились. "

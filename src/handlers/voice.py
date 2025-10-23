@@ -133,7 +133,9 @@ async def handle_voice_message(message: Message, state: FSMContext) -> None:
         await show_voice_confirmation(processing_msg, state, edit=True)
         
     except TranscriptionError as e:
-        logger.error(f"Ошибка транскрипции: {e}")
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"Ошибка транскрипции: {safe_error}")
         await processing_msg.edit_text(
             f"❌ Не удалось распознать речь: {e}\n\n"
             "Попробуйте еще раз или используйте /add"
@@ -187,7 +189,7 @@ async def show_voice_confirmation(message: Message, state: FSMContext, edit: boo
         f"<i>«{recognized_text}»</i>\n\n"
         f"📋 <b>Данные транзакции:</b>\n"
         f"{type_emoji} <b>{type_text}</b>\n"
-        f"💵 Сумма: <b>{sign}{amount:.2f} ₽</b>\n"
+        f"💵 Сумма: <b>{sign}{float(amount):.2f} ₽</b>\n"
         f"{category_emoji} Категория: <b>{category_name}</b>"
     )
     
@@ -231,7 +233,7 @@ async def process_voice_confirm(callback: CallbackQuery, state: FSMContext) -> N
         
         await callback.message.edit_text(
             f"✅ <b>Транзакция сохранена!</b>\n\n"
-            f"{type_emoji} {sign}{data['amount']:.2f} ₽\n"
+            f"{type_emoji} {sign}{float(data['amount']):.2f} ₽\n"
             f"{data['category_emoji']} {data['category_name']}"
         )
         
@@ -266,7 +268,7 @@ async def process_voice_edit(callback: CallbackQuery, state: FSMContext) -> None
     text = (
         f"✏️ <b>Редактирование транзакции</b>\n\n"
         f"{type_emoji} <b>{type_text}</b>\n"
-        f"💵 Сумма: <b>{sign}{data['amount']:.2f} ₽</b>\n"
+        f"💵 Сумма: <b>{sign}{float(data['amount']):.2f} ₽</b>\n"
         f"{data['category_emoji']} Категория: <b>{data['category_name']}</b>\n"
     )
     
@@ -310,10 +312,12 @@ async def process_voice_amount_input(message: Message, state: FSMContext) -> Non
     :param state: Контекст FSM
     :return: None
     """
+    from decimal import Decimal, InvalidOperation
+    
     amount_str = message.text.replace(",", ".").replace("₽", "").replace(" ", "")
     
     try:
-        amount = float(amount_str)
+        amount = Decimal(amount_str)
         
         if amount <= 0:
             await message.answer(
@@ -336,7 +340,7 @@ async def process_voice_amount_input(message: Message, state: FSMContext) -> Non
         
         await show_voice_confirmation(message, state)
         
-    except (ValueError, TypeError):
+    except (ValueError, InvalidOperation):
         await message.answer(
             "❌ Некорректный формат суммы.\n\n"
             "Введите число (можно с копейками через точку):\n"
