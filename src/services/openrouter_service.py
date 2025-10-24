@@ -15,6 +15,7 @@ from decimal import Decimal, InvalidOperation
 
 import httpx
 from pywhispercpp.model import Model
+from pywhispercpp.utils import download_model
 from loguru import logger
 
 from config import get_settings
@@ -67,8 +68,13 @@ async def _load_whisper_model():
     if _whisper_model is None:
         logger.info(f"Загружаю модель Whisper.cpp: {WHISPER_MODEL_NAME}")
         try:
+            ## Ensure model is downloaded first (cached if already exists)
+            logger.info(f"Проверяю наличие модели {WHISPER_MODEL_NAME}...")
+            model_path = await asyncio.to_thread(download_model, WHISPER_MODEL_NAME)
+            logger.success(f"Модель найдена: {model_path}")
+            
             ## Load model in thread to avoid blocking event loop
-            ## Pass model name without .bin extension - pywhispercpp handles the file lookup
+            ## Pass model name directly - pywhispercpp handles the rest
             _whisper_model = await asyncio.to_thread(
                 Model,
                 WHISPER_MODEL_NAME,
