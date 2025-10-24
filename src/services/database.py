@@ -57,7 +57,7 @@ async def initialize_default_categories() -> None:
     Example:
         >>> await initialize_default_categories()
     """
-    from src.models import async_session_maker
+    from src.models import async_session_maker, Category
     
     if async_session_maker is None:
         raise Exception("Database not initialized. Call init_db() first.")

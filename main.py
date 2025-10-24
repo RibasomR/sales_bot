@@ -16,6 +16,7 @@ from config import get_settings
 from src.utils.logger import setup_logging
 from src.handlers import common, voice, transactions, view, categories, export, settings
 from src.models import init_db, create_tables, close_db
+from src.models import User, Category, Transaction  # Import models to register them in metadata
 from src.services.database import initialize_default_categories
 from src.middlewares import (
     RateLimitMiddleware,
