@@ -651,10 +651,10 @@ async def get_user_statistics(
         }
         
         for row in rows:
-            if row.type == TransactionType.INCOME:
+            if row.type == TransactionType.INCOME.value:
                 stats['total_income'] = row.total or Decimal('0')
                 stats['income_count'] = row.count
-            elif row.type == TransactionType.EXPENSE:
+            elif row.type == TransactionType.EXPENSE.value:
                 stats['total_expense'] = row.total or Decimal('0')
                 stats['expense_count'] = row.count
         
@@ -696,7 +696,7 @@ async def get_top_expense_categories(
             .where(
                 and_(
                     Transaction.user_id == user_id,
-                    Transaction.type == TransactionType.EXPENSE
+                    Transaction.type == TransactionType.EXPENSE.value
                 )
             )
         )
