@@ -72,14 +72,14 @@ fi
 echo ""
 echo "7️⃣ Checking application logs (last 20 lines)..."
 echo "-----------------------------------------------"
-docker compose -f $COMPOSE_FILE logs --tail=20 app
+docker compose -f $COMPOSE_FILE logs --tail=20 bot
 
 echo ""
 echo "8️⃣ Checking for common issues..."
 echo "--------------------------------"
 
 # Check for ENUM type duplication error
-if docker compose -f $COMPOSE_FILE logs app 2>&1 | grep -q "DuplicateObjectError"; then
+if docker compose -f $COMPOSE_FILE logs bot 2>&1 | grep -q "DuplicateObjectError"; then
     echo -e "${RED}✗ Found DuplicateObjectError in logs${NC}"
     echo ""
     echo "💡 Quick fix:"
@@ -94,7 +94,7 @@ else
 fi
 
 # Check for connection errors
-if docker compose -f $COMPOSE_FILE logs app 2>&1 | grep -q "connection refused\|Connection refused"; then
+if docker compose -f $COMPOSE_FILE logs bot 2>&1 | grep -q "connection refused\|Connection refused"; then
     echo -e "${RED}✗ Found connection errors in logs${NC}"
     echo "   Check if PostgreSQL/Redis containers are running"
 else
