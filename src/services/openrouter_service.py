@@ -139,7 +139,13 @@ async def transcribe_audio(audio_path: str) -> str:
             language="ru"
         )
         
-        text = result.strip() if isinstance(result, str) else result.get("text", "").strip()
+        ## model.transcribe() returns list of segments with .text attribute
+        if isinstance(result, str):
+            text = result.strip()
+        elif isinstance(result, list):
+            text = " ".join(segment.text for segment in result).strip()
+        else:
+            raise TranscriptionError(f"Неожиданный тип результата транскрипции: {type(result)}")
         
         if not text:
             raise TranscriptionError("Пустой результат транскрипции")
