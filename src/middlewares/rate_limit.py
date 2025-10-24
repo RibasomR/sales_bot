@@ -66,6 +66,10 @@ class RateLimitMiddleware(BaseMiddleware):
             return await handler(event, data)
         
         # Проверяем rate limit
+        if rate_limiter is None:
+            # Если rate limiter не инициализирован, пропускаем проверку
+            return await handler(event, data)
+        
         allowed, error_message = await rate_limiter.check_rate_limit(
             user_id=user_id,
             max_requests=self.max_requests,
@@ -139,6 +143,10 @@ class StrictRateLimitMiddleware(BaseMiddleware):
             return await handler(event, data)
         
         # Проверяем rate limit с префиксом для разделения лимитов
+        if rate_limiter is None:
+            # Если rate limiter не инициализирован, пропускаем проверку
+            return await handler(event, data)
+        
         allowed, error_message = await rate_limiter.check_rate_limit(
             user_id=user_id * 1000,  # Используем другой namespace
             max_requests=self.max_requests,
