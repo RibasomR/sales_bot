@@ -87,7 +87,7 @@ docker compose -f docker-compose.prod.yml restart app
 docker compose -f docker-compose.prod.yml down
 
 # Бэкап базы данных
-docker exec finance_bot_postgres pg_dump -U finance_bot_user finance_bot_db > backup_$(date +%Y%m%d).sql
+docker exec finance_bot_db pg_dump -U finance_user finance_bot > backup_$(date +%Y%m%d).sql
 
 # Проверка здоровья
 curl http://localhost:8000/health

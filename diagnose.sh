@@ -32,7 +32,7 @@ docker compose -f $COMPOSE_FILE ps
 echo ""
 echo "2️⃣ Checking PostgreSQL connection..."
 echo "------------------------------------"
-if docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_bot_user -d finance_bot_db -c "SELECT 1;" > /dev/null 2>&1; then
+if docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_user -d finance_bot -c "SELECT 1;" > /dev/null 2>&1; then
     echo -e "${GREEN}✓ PostgreSQL is accessible${NC}"
 else
     echo -e "${RED}✗ PostgreSQL is not accessible${NC}"
@@ -42,17 +42,17 @@ fi
 echo ""
 echo "3️⃣ Checking database tables..."
 echo "------------------------------"
-docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_bot_user -d finance_bot_db -c "\dt"
+docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_user -d finance_bot -c "\dt"
 
 echo ""
 echo "4️⃣ Checking ENUM types..."
 echo "-------------------------"
-docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_bot_user -d finance_bot_db -c "SELECT typname FROM pg_type WHERE typtype = 'e';"
+docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_user -d finance_bot -c "SELECT typname FROM pg_type WHERE typtype = 'e';"
 
 echo ""
 echo "5️⃣ Checking Alembic migration version..."
 echo "----------------------------------------"
-ALEMBIC_VERSION=$(docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_bot_user -d finance_bot_db -t -c "SELECT version_num FROM alembic_version;" 2>/dev/null | tr -d '[:space:]')
+ALEMBIC_VERSION=$(docker compose -f $COMPOSE_FILE exec -T postgres psql -U finance_user -d finance_bot -t -c "SELECT version_num FROM alembic_version;" 2>/dev/null | tr -d '[:space:]')
 
 if [ -z "$ALEMBIC_VERSION" ]; then
     echo -e "${YELLOW}⚠ No migration version found (alembic_version table is empty)${NC}"
@@ -84,8 +84,9 @@ if docker compose -f $COMPOSE_FILE logs app 2>&1 | grep -q "DuplicateObjectError
     echo ""
     echo "💡 Quick fix:"
     echo "   1. Stop containers: docker compose -f $COMPOSE_FILE down"
-    echo "   2. Remove volume: docker volume rm finance_bot_app_postgres_data"
-    echo "   3. Start again: docker compose -f $COMPOSE_FILE up -d"
+    echo "   2. List volumes: docker volume ls"
+    echo "   3. Remove volumes: docker volume rm <project>_postgres_data <project>_redis_data"
+    echo "   4. Start again: docker compose -f $COMPOSE_FILE up -d"
     echo ""
     echo "   Or see docs/QUICK_FIX.md for data-preserving solutions"
 else

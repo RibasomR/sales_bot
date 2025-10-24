@@ -203,21 +203,22 @@ WHISPER_THREADS=2
 **Решение 1: Пересоздать базу (если данные не важны)**
 ```bash
 docker compose -f docker-compose.prod.yml down
-docker volume rm finance_bot_app_postgres_data
+# Узнать имена volumes: docker volume ls | grep postgres
+docker volume rm sales_bot_postgres_data sales_bot_redis_data
 docker compose -f docker-compose.prod.yml up -d
 ```
 
 **Решение 2: Исправить существующую базу**
 ```bash
 # Подключиться к базе
-docker exec -it finance_bot_postgres psql -U finance_bot_user -d finance_bot_db
+docker exec -it finance_bot_db psql -U finance_user -d finance_bot
 
 # В psql выполнить:
 DELETE FROM alembic_version;
 \q
 
 # Применить миграцию заново
-docker compose -f docker-compose.prod.yml exec app alembic upgrade head
+docker compose -f docker-compose.prod.yml exec bot alembic upgrade head
 ```
 
 Подробнее см. [migration_fix.md](migration_fix.md)
