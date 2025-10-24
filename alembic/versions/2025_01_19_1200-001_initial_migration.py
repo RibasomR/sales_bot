@@ -34,16 +34,22 @@ def upgrade() -> None:
     from sqlalchemy import text, inspect
     
     if bind.dialect.name == 'postgresql':
-        # Create ENUM types if they don't exist (ignore errors if they do)
-        try:
-            op.execute("CREATE TYPE category_type AS ENUM ('income', 'expense')")
-        except Exception:
-            pass  # Type already exists, ignore
+        ## Create ENUM types using DO block to check existence
+        op.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'category_type') THEN
+                    CREATE TYPE category_type AS ENUM ('income', 'expense');
+                END IF;
+            END $$;
+        """)
         
-        try:
-            op.execute("CREATE TYPE transaction_type AS ENUM ('income', 'expense')")
-        except Exception:
-            pass  # Type already exists, ignore
+        op.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+                    CREATE TYPE transaction_type AS ENUM ('income', 'expense');
+                END IF;
+            END $$;
+        """)
     
     ## Check if tables already exist
     
