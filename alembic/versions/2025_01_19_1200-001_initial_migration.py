@@ -10,6 +10,10 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
+## Import Python Enum types for proper enum handling
+from src.models.category import CategoryType
+from src.models.transaction import TransactionType
+
 
 # revision identifiers, used by Alembic.
 revision: str = '001'
@@ -71,7 +75,7 @@ def upgrade() -> None:
             'categories',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('name', sa.String(100), nullable=False),
-        sa.Column('type', sa.Enum('income', 'expense', name='category_type'), nullable=False),
+        sa.Column('type', sa.Enum(CategoryType, name='category_type'), nullable=False),
         sa.Column('emoji', sa.String(10), nullable=False, server_default='📝'),
         sa.Column('is_default', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('user_id', sa.Integer(), nullable=True),
@@ -109,7 +113,7 @@ def upgrade() -> None:
             'transactions',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('type', sa.Enum('income', 'expense', name='transaction_type'), nullable=False),
+        sa.Column('type', sa.Enum(TransactionType, name='transaction_type'), nullable=False),
         sa.Column('amount', sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column('category_id', sa.Integer(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
