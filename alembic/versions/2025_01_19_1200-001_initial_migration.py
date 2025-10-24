@@ -26,33 +26,13 @@ def upgrade() -> None:
     Includes timezone-aware timestamps and composite indexes for optimization.
     """
     
-    ## Create ENUM types (PostgreSQL only)
-    ## SQLite doesn't support ENUM, uses VARCHAR instead
+    ## Import required SQLAlchemy utilities
+    from sqlalchemy import inspect
+    
+    ## Get database connection
     bind = op.get_bind()
     
-    ## Import required SQLAlchemy utilities
-    from sqlalchemy import text, inspect
-    
-    if bind.dialect.name == 'postgresql':
-        ## Create ENUM types using DO block to check existence
-        op.execute("""
-            DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'category_type') THEN
-                    CREATE TYPE category_type AS ENUM ('income', 'expense');
-                END IF;
-            END $$;
-        """)
-        
-        op.execute("""
-            DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
-                    CREATE TYPE transaction_type AS ENUM ('income', 'expense');
-                END IF;
-            END $$;
-        """)
-    
     ## Check if tables already exist
-    
     inspector = inspect(bind)
     existing_tables = inspector.get_table_names()
     
@@ -91,7 +71,7 @@ def upgrade() -> None:
             'categories',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('name', sa.String(100), nullable=False),
-        sa.Column('type', sa.Enum('income', 'expense', name='category_type', create_type=False), nullable=False),
+        sa.Column('type', sa.Enum('income', 'expense', name='category_type'), nullable=False),
         sa.Column('emoji', sa.String(10), nullable=False, server_default='📝'),
         sa.Column('is_default', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('user_id', sa.Integer(), nullable=True),
@@ -129,7 +109,7 @@ def upgrade() -> None:
             'transactions',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('type', sa.Enum('income', 'expense', name='transaction_type', create_type=False), nullable=False),
+        sa.Column('type', sa.Enum('income', 'expense', name='transaction_type'), nullable=False),
         sa.Column('amount', sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column('category_id', sa.Integer(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
@@ -212,7 +192,10 @@ def downgrade() -> None:
     op.drop_table('users')
     
     ## Drop ENUM types (PostgreSQL only)
+    ## These will be automatically dropped by SQLAlchemy when tables are dropped
+    ## but we explicitly drop them to ensure cleanup
     bind = op.get_bind()
     if bind.dialect.name == 'postgresql':
-        op.execute('DROP TYPE IF EXISTS transaction_type')
-        op.execute('DROP TYPE IF EXISTS category_type')
+        from sqlalchemy import text
+        op.execute(text('DROP TYPE IF EXISTS transaction_type CASCADE'))
+        op.execute(text('DROP TYPE IF EXISTS category_type CASCADE'))
