@@ -156,13 +156,17 @@ async def main() -> None:
     
     try:
         logger.info("🔄 Начинаю polling...")
+        logger.info("✅ Бот успешно запущен и готов к работе")
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    except KeyboardInterrupt:
+        logger.info("⛔ Получен сигнал остановки (Ctrl+C)")
     except Exception as e:
         from src.utils.sanitizer import sanitize_exception_message
         safe_error = sanitize_exception_message(e)
         logger.critical(f"❌ Критическая ошибка при работе бота: {safe_error}")
         raise
     finally:
+        logger.info("🔄 Начинаю graceful shutdown...")
         await bot.session.close()
         await close_db()
         if redis_client:

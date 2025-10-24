@@ -53,6 +53,9 @@ COPY . .
 # Create logs directory
 RUN mkdir -p /app/logs
 
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -62,7 +65,7 @@ ENV PYTHONUNBUFFERED=1 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python /app/healthcheck.py
 
-# Run the bot
-CMD ["python", "main.py"]
+# Run the bot via entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 
