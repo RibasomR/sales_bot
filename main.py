@@ -15,7 +15,7 @@ from loguru import logger
 from config import get_settings
 from src.utils.logger import setup_logging
 from src.handlers import common, voice, transactions, view, categories, export, settings
-from src.models import init_db, close_db
+from src.models import init_db, create_tables, close_db
 from src.services.database import initialize_default_categories
 from src.middlewares import (
     RateLimitMiddleware,
@@ -67,6 +67,15 @@ async def main() -> None:
         from src.utils.sanitizer import sanitize_exception_message
         safe_error = sanitize_exception_message(e)
         logger.critical(f"❌ Ошибка инициализации БД: {safe_error}")
+        sys.exit(1)
+    
+    try:
+        await create_tables()
+        logger.info("✅ Таблицы БД созданы/проверены")
+    except Exception as e:
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.critical(f"❌ Ошибка создания таблиц БД: {safe_error}")
         sys.exit(1)
     
     try:

@@ -114,6 +114,22 @@ def init_db() -> None:
     )
 
 
+async def create_tables() -> None:
+    """
+    Создание всех таблиц в базе данных.
+    
+    Выполняет создание всех таблиц согласно моделям SQLAlchemy.
+    Должна быть вызвана после init_db().
+    
+    :return: None
+    """
+    if engine is None:
+        raise Exception("Database not initialized. Call init_db() first.")
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """
