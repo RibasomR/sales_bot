@@ -78,7 +78,7 @@ async def initialize_default_categories() -> None:
                 category = Category(
                     name=cat_data["name"],
                     emoji=cat_data["emoji"],
-                    type=CategoryType.EXPENSE,
+                    type=CategoryType.EXPENSE.value,
                     is_default=True,
                     user_id=None
                 )
@@ -88,7 +88,7 @@ async def initialize_default_categories() -> None:
                 category = Category(
                     name=cat_data["name"],
                     emoji=cat_data["emoji"],
-                    type=CategoryType.INCOME,
+                    type=CategoryType.INCOME.value,
                     is_default=True,
                     user_id=None
                 )
@@ -253,7 +253,7 @@ async def create_custom_category(
         category = Category(
             name=name,
             emoji=emoji,
-            type=category_type,
+            type=category_type.value if hasattr(category_type, 'value') else category_type,
             is_default=False,
             user_id=user_id
         )
@@ -403,7 +403,7 @@ async def create_transaction(
     async with get_session() as session:
         transaction = Transaction(
             user_id=user_id,
-            type=transaction_type,
+            type=transaction_type.value if hasattr(transaction_type, 'value') else transaction_type,
             amount=amount,
             category_id=category_id,
             description=description
