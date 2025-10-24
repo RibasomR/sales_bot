@@ -41,7 +41,7 @@ def test_model_loading():
         from pywhispercpp.model import Model
         
         print("\n📦 Attempting to load Whisper.cpp model (this may download it)...")
-        model = Model(model="ggml-base.bin", n_threads=2)
+        model = Model(model="base", n_threads=2)
         print("✅ Model loaded successfully")
         return True
     except Exception as e:

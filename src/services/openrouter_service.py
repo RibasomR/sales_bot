@@ -70,7 +70,7 @@ async def _load_whisper_model():
             ## Load model in thread to avoid blocking event loop
             _whisper_model = await asyncio.to_thread(
                 Model,
-                model=f"ggml-{WHISPER_MODEL_NAME}.bin",
+                model=WHISPER_MODEL_NAME,
                 n_threads=4
             )
             logger.success(f"Модель Whisper.cpp '{WHISPER_MODEL_NAME}' успешно загружена")
