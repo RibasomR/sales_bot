@@ -50,8 +50,8 @@ class ParsingError(AgentRouterError):
     pass
 
 
-## Load Whisper.cpp model (synchronous)
-def _load_whisper_model():
+## Load Whisper.cpp model asynchronously
+async def _load_whisper_model():
     """
     Load Whisper.cpp model into memory (lazy loading).
     
@@ -67,7 +67,9 @@ def _load_whisper_model():
     if _whisper_model is None:
         logger.info(f"Загружаю модель Whisper.cpp: {WHISPER_MODEL_NAME}")
         try:
-            _whisper_model = Model(
+            ## Load model in thread to avoid blocking event loop
+            _whisper_model = await asyncio.to_thread(
+                Model,
                 model=f"ggml-{WHISPER_MODEL_NAME}.bin",
                 n_threads=4
             )
@@ -79,6 +81,21 @@ def _load_whisper_model():
             raise TranscriptionError(f"Не удалось загрузить модель Whisper.cpp: {safe_error}")
     
     return _whisper_model
+
+
+## Initialize Whisper model on startup
+async def initialize_whisper():
+    """
+    Initialize Whisper model during bot startup.
+    
+    Preloads model to avoid delays on first voice message.
+    Should be called during bot initialization.
+    
+    :return: None
+    :raises TranscriptionError: If model loading fails
+    """
+    await _load_whisper_model()
+    logger.info("Whisper.cpp готов к работе")
 
 
 ## Transcribe audio to text via local Whisper.cpp
@@ -106,7 +123,7 @@ async def transcribe_audio(audio_path: str) -> str:
     logger.info(f"Начинаю транскрипцию аудио через Whisper.cpp: {audio_path}")
     
     try:
-        model = _load_whisper_model()
+        model = await _load_whisper_model()
         
         ## Transcribe with Whisper.cpp
         result = await asyncio.to_thread(

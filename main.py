@@ -27,6 +27,7 @@ from src.utils.validators import (
     InMemoryRateLimiterBackend,
     RedisRateLimiterBackend,
 )
+from src.services.openrouter_service import initialize_whisper
 
 
 ## Инициализация и запуск бота
@@ -86,6 +87,16 @@ async def main() -> None:
         from src.utils.sanitizer import sanitize_exception_message
         safe_error = sanitize_exception_message(e)
         logger.error(f"⚠️ Ошибка инициализации категорий: {safe_error}")
+    
+    ## Initialize Whisper model for voice message processing
+    try:
+        await initialize_whisper()
+        logger.info("✅ Whisper.cpp инициализирован")
+    except Exception as e:
+        from src.utils.sanitizer import sanitize_exception_message
+        safe_error = sanitize_exception_message(e)
+        logger.error(f"⚠️ Ошибка инициализации Whisper.cpp: {safe_error}")
+        logger.warning("Голосовые сообщения могут работать с задержкой при первом использовании")
     
     ## Initialize rate limiter with Redis or fallback to in-memory
     redis_client = None
