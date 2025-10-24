@@ -34,20 +34,16 @@ def upgrade() -> None:
     from sqlalchemy import text, inspect
     
     if bind.dialect.name == 'postgresql':
-        # Check if types already exist before creating
-        # Check and create category_type if not exists
-        result = bind.execute(text(
-            "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'category_type')"
-        )).fetchone()
-        if not result[0]:
+        # Create ENUM types if they don't exist (ignore errors if they do)
+        try:
             op.execute("CREATE TYPE category_type AS ENUM ('income', 'expense')")
+        except Exception:
+            pass  # Type already exists, ignore
         
-        # Check and create transaction_type if not exists
-        result = bind.execute(text(
-            "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type')"
-        )).fetchone()
-        if not result[0]:
+        try:
             op.execute("CREATE TYPE transaction_type AS ENUM ('income', 'expense')")
+        except Exception:
+            pass  # Type already exists, ignore
     
     ## Check if tables already exist
     
