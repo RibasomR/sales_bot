@@ -68,9 +68,10 @@ async def _load_whisper_model():
         logger.info(f"Загружаю модель Whisper.cpp: {WHISPER_MODEL_NAME}")
         try:
             ## Load model in thread to avoid blocking event loop
+            ## Pass model name without .bin extension - pywhispercpp handles the file lookup
             _whisper_model = await asyncio.to_thread(
                 Model,
-                model=WHISPER_MODEL_NAME,
+                WHISPER_MODEL_NAME,
                 n_threads=4
             )
             logger.success(f"Модель Whisper.cpp '{WHISPER_MODEL_NAME}' успешно загружена")
