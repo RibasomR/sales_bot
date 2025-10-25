@@ -24,7 +24,7 @@ from config import get_settings
 ## Model configuration
 WHISPER_MODEL_NAME = "base"
 AGENTROUTER_BASE_URL = "https://agentrouter.org/v1"
-DEEPSEEK_MODEL = "deepseek-v3.2"
+AGENTROUTER_MODEL = "deepseek-v3.2"
 
 ## Global variable for storing loaded Whisper.cpp model
 _whisper_model = None
@@ -264,7 +264,7 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     }
     
     payload = {
-        "model": DEEPSEEK_MODEL,
+        "model": AGENTROUTER_MODEL,
         "messages": [
             {"role": "user", "content": prompt}
         ],
@@ -302,6 +302,15 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
                     # Sanitize response for logging (may contain sensitive data)
                     safe_response = response.text[:200] if len(response.text) > 200 else response.text
                     logger.error(f"AgentRouter API ошибка {response.status_code}: {safe_response}")
+                    
+                    ## Handle authentication errors (401)
+                    if response.status_code == 401:
+                        raise ParsingError(
+                            "Неверный API ключ AgentRouter. "
+                            "Проверьте AGENTROUTER_API_KEY в .env файле. "
+                            "Получить новый ключ: https://agentrouter.org/console/token"
+                        )
+                    
                     last_error = ParsingError(f"AgentRouter API вернул ошибку: {response.status_code}")
                     
                     if attempt < settings.agentrouter_max_retries - 1:
