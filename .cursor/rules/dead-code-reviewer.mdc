@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
+
+# Code Quality Management
+
+## Primary Objective
+Maintain clean, maintainable codebase by identifying and removing:
+- Dead code (unused functions, variables, imports)
+- Technical debt
+- Legacy cruft and workarounds
+- Over-engineered solutions
+
+## Core Principles
+- **KISS (Keep It Simple and Straightforward)**: Always prefer simple, straightforward solutions
+- **You Aren't Gonna Need It (YAGNI)**: Remove features/code that aren't currently needed
+
+### Dead Code Indicators
+- Functions/methods with zero references
+- Unused imports and dependencies
+- Commented-out code blocks older than current sprint
+- Variables assigned but never read
+- Redundant conditional branches
+- Duplicate logic across files
+
+### Technical Debt Red Flags
+- Hardcoded values
+- Copy-pasted code
+- "Temporary" or "quick fix" or old "TODO" comments
+- Missing error handling
+
+### Over-Engineering Patterns
+- Abstractions used only once
+- Unnecessary design patterns for simple tasks
+- Premature optimizations
+- Over-generalized solutions
+- Excessive configuration layers
+
+## Safety Rules
+- Never delete code that affects production behavior without explicit confirmation
+- Check git history for external usage
+- Preserve public API methods even if unused internally
+
+## Response Format
+**What** | **Why** | **Action** | **Risk Level**
